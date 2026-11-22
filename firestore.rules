@@ -1,8 +1,8 @@
-rules_version = '2';
+rules_version = '2'; 
 service cloud.firestore {
  match /databases/{database}/documents {
   function reserved(name) {return name in ['weshahPushSubscriptions','weshahPushLimits','weshahPushCampaigns'];}
-  function privateCollection(name) {return name in ['customers','orders'];}
+  function privateCollection(name) {return name in ['customers','orders','weshahSupportThreads','subscribers'];}
   function trustedServer() {return request.auth != null && request.auth.uid == '8wGuAyip2ROrhSklnmz6YYlF1Xx2';}
   function own(uid) {return request.auth != null && request.auth.uid == uid;}
   function text(value,max) {return value is string && value.size() <= max;}
@@ -16,6 +16,25 @@ service cloud.firestore {
   }
   match /{topLevel}/{document=**} {
    allow read,write: if (!reserved(topLevel) && !privateCollection(topLevel)) || trustedServer();
+  }
+  match /subscribers/{subscriberId} {
+   function validSubscription(data) {
+    return data.keys().hasOnly(['email','createdAt'])
+     && data.email is string && data.email.size() >= 5 && data.email.size() <= 254
+     && data.email.matches("^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+([.][a-z0-9-]+)+$")
+     && data.email == data.email.lower() && data.createdAt == request.time;
+   }
+   allow create: if validSubscription(request.resource.data);
+   allow update: if validSubscription(request.resource.data)
+    && request.resource.data.email == resource.data.email
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdAt']);
+  }
+  match /weshahSupportThreads/{uid} {
+   allow get: if own(uid);
+   match /messages/{messageId} {
+    allow get: if own(uid);
+    allow list: if own(uid) && request.query.limit != null && request.query.limit <= 40;
+   }
   }
   match /customers/{uid} {
    allow read: if own(uid);
