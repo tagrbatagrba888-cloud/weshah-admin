@@ -1,0 +1,23 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {makeProfileHandler} from '../api/profile.js';
+import {makeProfileReader} from '../server/profile-storage.mjs';
+import {profileRequest} from '../server/profile.mjs';
+import {STORE,HttpError} from '../server/security.mjs';
+const identity={uid:'profile-read-fixture',email:'read@fixture.invalid'};
+const input={action:'saveProfile',name:'عميل اختبار القراءة',phone:'01000000000',username:'read.fixture',address:{datasetVersion:'egypt-capmas-2023-v1',mode:'listed',governorateCode:'01',centerCode:'0101',localityCode:'010101',details:'عنوان محاكي فقط غير صالح للشحن'}};
+const canonical={...identity,...profileRequest(input),ownerNote:'never-return',ordersCount:77};
+const response=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(n){this.statusCode=n;return this;},json(body){this.body=body;return this;},end(){return this;}});
+async function call({origin=STORE,verify=async()=>identity,read=async()=>null,method='GET'}={}){
+ const calls=[];const res=response();
+ const deps={profileIdentity:verify,readProfile:async who=>{calls.push(['read',who]);return read(who);},rate:async(...args)=>calls.push(['rate',...args]),saveProfile:async()=>{throw Error('GET must never save');}};
+ await makeProfileHandler(deps)({method,headers:{origin,authorization:'Bearer synthetic-read-token'},query:{uid:'foreign-fixture'},body:{uid:'foreign-fixture'}},res);return{res,calls};
+}
+test('GET derives only the verified UID and reports canonical completion required without any save',async()=>{const{res,calls}=await call();assert.equal(res.statusCode,200);assert.deepEqual(res.body,{ok:true,uid:identity.uid,profile:null,completionRequired:true});assert.deepEqual(calls[1],['read',identity]);assert.equal(res.headers['Cache-Control'],'no-store');assert.equal(res.headers['Access-Control-Allow-Origin'],STORE);});
+test('GET canonical result is returned only after identity and bounded rate checks',async()=>{const{res,calls}=await call({read:async who=>{assert.deepEqual(who,identity);return{uid:who.uid};}});assert.equal(res.statusCode,200);assert.equal(res.body.completionRequired,false);assert.equal(calls[0][0],'rate');assert.equal(calls[0][1],'profile:read:'+identity.uid);});
+test('GET is exact-origin and does not allow unauthenticated or forged identity lookup',async()=>{for(const origin of['',STORE+'/',STORE+'.evil.invalid','null']){const{res,calls}=await call({origin});assert.equal(res.statusCode,403);assert.equal(calls.length,0);}const{res,calls}=await call({verify:async()=>{throw new HttpError(401,'Sign in');}});assert.equal(res.statusCode,401);assert.equal(calls.length,0);});
+test('GET operational errors do not claim unsaved data or reveal raw private errors',async()=>{const{res}=await call({read:async()=>{throw Error('secret-provider-value');}});assert.equal(res.statusCode,503);assert.equal(res.body.confirmed,false);assert.equal(JSON.stringify(res.body).includes('secret'),false);assert.equal(res.body.error.includes('حفظ'),false);});
+test('actual reader always references current UID and has no write dependency',async()=>{let target;const read=makeProfileReader({connect:async()=>({db:{}}),reference:(db,collection,id)=>{target={collection,id};return target;},read:async ref=>{assert.deepEqual(ref,{collection:'customers',id:identity.uid});return{exists:()=>true,data:()=>canonical};}});const result=await read(identity);assert.deepEqual(target,{collection:'customers',id:identity.uid});assert.equal(result.uid,identity.uid);assert.equal(result.ownerNote,undefined);assert.equal(result.ordersCount,undefined);});
+test('reader identifies missing and legacy records without sending unknown data',async()=>{for(const value of[null,{...identity,name:'legacy',ownerNote:'secret'}]){const read=makeProfileReader({connect:async()=>({db:{}}),reference:()=>({}),read:async()=>({exists:()=>value!==null,data:()=>value})});assert.equal(await read(identity),null);}});
+test('reader rejects foreign or malformed canonical records rather than masking corruption',async()=>{for(const row of[{...canonical,uid:'foreign-fixture'},{...canonical,email:'foreign@fixture.invalid'},{...canonical,profileSchemaVersion:2},{...canonical,addressV1:{}}]){const read=makeProfileReader({connect:async()=>({db:{}}),reference:()=>({}),read:async()=>({exists:()=>true,data:()=>row})});await assert.rejects(()=>read(identity));}});
+test('reader rejects a failed current-server read without making a retry or write',async()=>{let count=0;const read=makeProfileReader({connect:async()=>({db:{}}),reference:()=>({}),read:async()=>{count++;throw Error('unavailable');}});await assert.rejects(()=>read(identity));assert.equal(count,1);});
