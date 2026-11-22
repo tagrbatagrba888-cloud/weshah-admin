@@ -3,7 +3,7 @@ import {initializeAuth,inMemoryPersistence,signInWithEmailAndPassword} from 'fir
 import {initializeFirestore,memoryLocalCache,collection,doc,getDoc,getDocs,query,where,limit,setDoc,deleteDoc,runTransaction} from 'firebase/firestore';
 import {initializeApp as initializeAdmin,getApps as adminApps} from 'firebase-admin/app';
 import {getAuth as adminAuth} from 'firebase-admin/auth';
-import {fail,sha} from './security.mjs';
+import {fail,sha,testUid} from './security.mjs';
 const config={apiKey:'AIzaSyDx4qDjTvWkzfX2H3SwuVMJe3a-wcr5xhk',authDomain:'matrgar-bf3d1.firebaseapp.com',projectId:'matrgar-bf3d1'};
 let resources,authPromise;
 export async function resourcesReady(){
@@ -29,16 +29,16 @@ export async function putSubscription(uid,sub,consent){
 }
 export async function removeSubscription(uid,endpoint){const {db}=await resourcesReady();const ref=doc(db,'weshahPushSubscriptions',sha(endpoint));await runTransaction(db,async tx=>{const old=await tx.get(ref);if(old.exists()&&old.data().uid!==uid)fail(403,'Subscription belongs to a different account');tx.delete(ref);});}
 export async function recipients(m){
- const {db}=await resourcesReady();let q;
- if(m.type==='product')q=query(collection(db,'weshahPushSubscriptions'),where('marketing','==',true),limit(51));
- else{const order=await getDoc(doc(db,'orders',m.orderId));if(!order.exists()||typeof order.data().uid!=='string')fail(404,'Order not found or has no account');q=query(collection(db,'weshahPushSubscriptions'),where('uid','==',order.data().uid),limit(6));}
- const snap=await getDocs(q);const rows=snap.docs.filter(d=>m.type==='product'||d.data().orders===true).map(d=>({id:d.id,...d.data()}));
+ const {db}=await resourcesReady();let q;const only=testUid();
+ if(m.type==='product')q=only?query(collection(db,'weshahPushSubscriptions'),where('uid','==',only),limit(6)):query(collection(db,'weshahPushSubscriptions'),where('marketing','==',true),limit(51));
+ else{const order=await getDoc(doc(db,'orders',m.orderId));if(!order.exists()||typeof order.data().uid!=='string')fail(404,'Order not found or has no account');if(only&&order.data().uid!==only)fail(403,'This order is outside the isolated test account');q=query(collection(db,'weshahPushSubscriptions'),where('uid','==',order.data().uid),limit(6));}
+ const snap=await getDocs(q);const rows=snap.docs.filter(d=>(!only||d.data().uid===only)&&(m.type==='product'?d.data().marketing===true:d.data().orders===true)).map(d=>({id:d.id,...d.data()}));
  if(rows.length>50)fail(409,'This hobby sender supports at most 50 devices per announcement');
  return rows.sort((a,b)=>a.id.localeCompare(b.id));
 }
 export async function beginCampaign(id,m,count){const {db}=await resourcesReady();const ref=doc(db,'weshahPushCampaigns',id);await runTransaction(db,async tx=>{if((await tx.get(ref)).exists())fail(409,'This preview was already submitted. Do not repeat it');tx.set(ref,{type:m.type,title:m.title,body:m.body,orderId:m.orderId,count,startedAt:Date.now(),state:'sending'});});}
 export async function finishCampaign(id,result){const {db}=await resourcesReady();await setDoc(doc(db,'weshahPushCampaigns',id),{...result,state:'finished',finishedAt:Date.now()},{merge:true});}
 export async function removeExpired(id){const {db}=await resourcesReady();await deleteDoc(doc(db,'weshahPushSubscriptions',id));}
-export async function stillConsents(row,m){const {db}=await resourcesReady();const snap=await getDoc(doc(db,'weshahPushSubscriptions',row.id));return snap.exists()&&snap.data().uid===row.uid&&(m.type==='product'?snap.data().marketing===true:snap.data().orders===true);}
+export async function stillConsents(row,m){if(testUid()&&row.uid!==testUid())return false;const {db}=await resourcesReady();const snap=await getDoc(doc(db,'weshahPushSubscriptions',row.id));return snap.exists()&&snap.data().uid===row.uid&&(m.type==='product'?snap.data().marketing===true:snap.data().orders===true);}
 
 export async function subscriptionPreferences(uid,endpoint){const {db}=await resourcesReady();const snap=await getDoc(doc(db,'weshahPushSubscriptions',sha(endpoint)));const d=snap.data();return d?.uid===uid?{found:true,orders:d.orders===true,marketing:d.marketing===true}:{found:false,orders:false,marketing:false};}
