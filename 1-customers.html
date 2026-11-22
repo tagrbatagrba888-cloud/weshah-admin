@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="#073b29" />
+    <title>WESHAH | العملاء</title>
+    <link rel="stylesheet" href="weshah.css" />
+    <link rel="icon" href="icon.svg" />
+    <style>
+      .customer-tools {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 18px 0;
+      }
+      .customer-tools input {
+        flex: 1;
+        min-width: 180px;
+        max-width: 540px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        font: inherit;
+        color: var(--ink);
+        background: var(--paper);
+      }
+      .table-scroll {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--paper);
+      }
+      .table-scroll table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 650px;
+      }
+      .table-scroll td,
+      .table-scroll th {
+        padding: 13px;
+        text-align: right;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+        overflow-wrap: anywhere;
+        max-width: 280px;
+      }
+      .table-scroll th {
+        background: var(--green);
+        color: white;
+      }
+      .table-scroll small {
+        display: block;
+        color: var(--muted);
+        margin-top: 5px;
+      }
+      #customerStatus {
+        padding: 12px 0;
+      }
+      #customerStatus[role="alert"] {
+        color: #a64032;
+      }
+      dl > div {
+        padding: 8px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      dt {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      dd {
+        margin: 4px 0;
+        overflow-wrap: anywhere;
+      }
+      .customer-orders {
+        max-height: 40vh;
+        overflow: auto;
+        padding: 0 20px;
+      }
+      .customer-orders li {
+        padding: 8px;
+      }
+      .customer-orders span {
+        margin-right: 12px;
+      }
+      .customer-page {
+        padding-bottom: 30px;
+      }
+      @media (max-width: 640px) {
+        .table-scroll {
+          border: 0;
+          background: none;
+          overflow: visible;
+        }
+        .table-scroll table,
+        .table-scroll tbody {
+          display: block;
+          min-width: 0;
+        }
+        .table-scroll thead {
+          display: none;
+        }
+        .table-scroll tr {
+          display: block;
+          background: var(--paper);
+          border: 1px solid var(--line);
+          border-radius: 12px;
+          margin-bottom: 12px;
+          padding: 8px;
+        }
+        .table-scroll td {
+          display: block;
+          width: 100%;
+          max-width: none;
+          padding: 9px;
+          border: 0;
+        }
+        .table-scroll td[data-label]:before {
+          content: attr(data-label);
+          display: block;
+          color: var(--muted);
+          font-size: 11px;
+          margin-bottom: 3px;
+        }
+        .customer-tools input {
+          width: 100%;
+          max-width: none;
+          flex-basis: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body data-theme="light">
+    <div id="app"></div>
+    <script type="module" src="customers.js"></script>
+  </body>
+</html>
