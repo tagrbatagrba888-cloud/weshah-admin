@@ -137,7 +137,7 @@ export function requireAuth() {
   if (!s) { window.location.replace('login.html'); throw new Error('Not authenticated'); }
   return s;
 }
-export function logout() { clearSession(); window.location.href = 'login.html'; }
+export async function logout() {try{await fetch('/api/push?action=logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',credentials:'same-origin',cache:'no-store'});}catch{}finally{clearSession();window.location.href='login.html';}}
 window.logout = logout;
 
 /* ---------- SHA-256 ---------- */
