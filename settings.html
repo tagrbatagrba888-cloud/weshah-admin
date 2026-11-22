@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#073b29">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WESHAH">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>WESHAH — الإعدادات</title>
+<link rel="stylesheet" href="weshah.css">
+</head>
+<body data-theme="light">
+<div id="app"></div>
+
+<script type="module">
+import {
+  $, $$, esc, svg, ICONS, COLORS, uid, safeHref, mountShell, getConfig, saveConfig, loadConfig, refreshBrand, compressImage, saveImage, deleteImage,
+  imageStats, openModal, confirmDialog, toast, installApp, canInstall, isStandalone, isIOS, writeCachedLogo, LOGO_FALLBACK,
+  DEFAULT_NAV, DEFAULT_ACTIONS, DEFAULT_SECTIONS, SECTION_LABELS, DEFAULT_ACCOUNTING
+} from './weshah-core.js';
+import { COUNT_MODES } from './weshah-accounting.js';
+
+const page = mountShell({ title: 'الإعدادات', sub: 'تحكم كامل في الهوية والأزرار والمحاسبة وتطبيق الهاتف' });
+const fmtKB = b => (b / 1024).toFixed(b < 10240 ? 1 : 0) + ' ك.ب';
+const PAGES = ['index.html', 'products.html', 'add-product.html', 'orders.html', 'suppliers.html', 'customers.html', 'settings.html', 'WESHAH_marketplace_day_night.html',
+  'index.html#overview', 'index.html#pnl', 'index.html#orders', 'index.html#products', 'index.html#expenses', 'index.html#coupons'];
+const ICON_KEYS = Object.keys(ICONS).filter(k => !['more', 'menu', 'x', 'up', 'down', 'undo', 'check', 'logout', 'moon', 'sun', 'eye', 'eyeoff', 'edit', 'trash', 'download', 'upload', 'print', 'refresh', 'alert'].includes(k));
+
+let pending = null;      // { dataUrl, bytes, width, height, name }
+let dirty = false;
+
+/* ================= الهيكل ================= */
+page.innerHTML = `
+  <!-- 1. الهوية -->
+  <div class="card">
+    <div class="card-head"><div><h2>${svg('image')} هوية الموقع</h2><p>الشعار والاسم يظهران في كل الصفحات وتطبيق الهاتف</p></div></div>
+
+    <div class="logo-preview-wrap">
+      <div class="logo-preview"><img id="logoImg" src="${LOGO_FALLBACK}" alt="الشعار الحالي"></div>
+      <div class="logo-info" id="logoInfo">الصور تُحفظ مضغوطة جدًا داخل <b>مستندات Firestore العادية</b> موزّعة على عدة مستندات — بدون Firebase Storage.</div>
+    </div>
+
+    <div class="tabs" id="logoTabs">
+      <button class="tab active" type="button" data-act="logo-tab" data-id="upload">${svg('upload')} رفع صورة</button>
+      <button class="tab" type="button" data-act="logo-tab" data-id="url">${svg('link')} رابط مباشر</button>
+    </div>
+    <div class="tab-content active" id="tab-upload">
+      <label class="file-upload" id="drop" for="logoFile">
+        ${svg('upload')}<b>اضغط لاختيار صورة أو اسحبها هنا</b><small>PNG · JPG · WebP · SVG — تُضغط تلقائيًا قبل الرفع</small>
+        <input type="file" id="logoFile" accept="image/*">
+      </label>
+      <div class="progress" id="prog" hidden><i></i></div>
+      <div id="uploadStatus" class="muted" style="margin-top:10px;font-size:12.5px"></div>
+    </div>
+    <div class="tab-content" id="tab-url">
+      <div class="field"><label>رابط الصورة المباشر</label><input type="url" id="logoUrlInput" placeholder="https://example.com/logo.png" dir="ltr"><small>سيُستخدم الرابط مباشرة بدلًا من الصورة المحفوظة في Firestore.</small></div>
+    </div>
+
+    <div class="row-2" style="margin-top:14px">
+      <div class="field"><label>اسم الموقع (عربي)</label><input type="text" id="siteNameAr" placeholder="مثال: وشاح" maxlength="40"><small>يظهر في عنوان الصفحة.</small></div>
+      <div class="field"><label>اسم الموقع (إنجليزي)</label><input type="text" id="siteNameEn" placeholder="WESHAH" maxlength="40" dir="ltr"><small>يظهر بجوار الشعار في القائمة.</small></div>
+    </div>
+    <button class="btn btn-primary" type="button" id="saveIdentity">${svg('check')} حفظ هوية الموقع</button>
+  </div>
+
+  <!-- 2. تطبيق الهاتف -->
+  <div class="card">
+    <div class="card-head"><div><h2>${svg('install')} تطبيق الهاتف (PWA)</h2><p>افتح اللوحة كتطبيق مستقل بأيقونة وشاشة كاملة وتعمل مع ضعف الاتصال</p></div></div>
+    <div id="pwaRows"></div>
+    <div style="margin-top:14px;display:flex;gap:9px;flex-wrap:wrap">
+      <button class="btn btn-primary" type="button" id="btnInstall">${svg('install')} تثبيت التطبيق</button>
+    </div>
+  </div>
+
+  <!-- 3. أزرار الصفحة الرئيسية -->
+  <div class="card">
+    <div class="card-head"><div><h2>${svg('plus')} أزرار الصفحة الرئيسية</h2><p>أخفِ، احذف، أضف، رتّب، واسترجع أي زر في «إجراءات سريعة»</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" type="button" data-act="reset-list" data-key="actions">${svg('undo')} الافتراضي</button>
+      <button class="btn btn-primary btn-sm" type="button" data-act="add" data-key="actions">${svg('plus')} إضافة زر</button></div></div>
+    <div class="buttons-list" id="list-actions"></div>
+    <details class="trash" id="trash-actions"><summary>${svg('trash', 'ic')} الأزرار المحذوفة <span id="trashCount-actions"></span></summary><div class="buttons-list" id="trashlist-actions" style="margin-top:6px"></div></details>
+  </div>
+
+  <!-- 4. القائمة الجانبية -->
+  <div class="card">
+    <div class="card-head"><div><h2>${svg('menu')} القائمة الجانبية والتنقل السفلي</h2><p>تتحكم في صفحات القائمة. أول 4 عناصر ظاهرة تظهر في شريط التطبيق السفلي على الجوال</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" type="button" data-act="reset-list" data-key="nav">${svg('undo')} الافتراضي</button>
+      <button class="btn btn-primary btn-sm" type="button" data-act="add" data-key="nav">${svg('plus')} إضافة رابط</button></div></div>
+    <div class="buttons-list" id="list-nav"></div>
+    <details class="trash" id="trash-nav"><summary>${svg('trash', 'ic')} الروابط المحذوفة <span id="trashCount-nav"></span></summary><div class="buttons-list" id="trashlist-nav" style="margin-top:6px"></div></details>
+  </div>
+
+  <!-- 5. أقسام اللوحة -->
+  <div class="card">
+    <div class="card-head"><div><h2>${svg('dashboard')} أقسام لوحة التحكم</h2><p>اختر ما يظهر في الصفحة الرئيسية</p></div></div>
+    <div id="sectionRows"></div>
+  </div>
+
+  <!-- 6. المحاسبة -->
+  <div class="card">
+    <div class="card-head"><div><h2>${svg('calc')} إعدادات المحاسبة</h2><p>تحدد كيف تُحسب الإيرادات والأرباح والتنبيهات</p></div></div>
+    <div class="field"><label>الطلبات التي تدخل في الإيراد</label>
+      <select id="accMode">${Object.entries(COUNT_MODES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}</select>
+      <small>الطلبات الملغاة والمسترجعة لا تُحسب في أي وضع. اختر «المكتملة فقط» للأرباح المحققة فعليًا.</small></div>
+    <div class="row-2">
+      <div class="field"><label>حد تنبيه المخزون المنخفض</label><input type="number" id="accLow" min="0" step="1" inputmode="numeric"></div>
+      <div class="field"><label>رمز العملة</label><input type="text" id="accCur" maxlength="10"></div>
+    </div>
+    <button class="btn btn-primary" type="button" id="saveAcc">${svg('check')} حفظ إعدادات المحاسبة</button>
+  </div>
+
+  <!-- 6b. المتجر -->
+  <div class="card">
+    <div class="card-head"><div><h2>${svg('store')} إعدادات المتجر</h2><p>الشحن وواتساب وشريط الإعلان في صفحة المتجر</p></div></div>
+    <div class="row-2">
+      <div class="field"><label>مصاريف الشحن</label><input type="number" id="sfShip" min="0" step="1" inputmode="decimal"></div>
+      <div class="field"><label>شحن مجاني فوق (0 = معطّل)</label><input type="number" id="sfFree" min="0" step="1" inputmode="decimal"></div>
+    </div>
+    <div class="field"><label>رقم واتساب (بصيغة دولية)</label><input type="text" id="sfPhone" dir="ltr" placeholder="2010xxxxxxxx"></div>
+    <div class="field"><label>نص شريط الإعلان (اختياري)</label><input type="text" id="sfAnn" maxlength="120"></div>
+    <div class="row-2">
+      <div class="field"><label>شعار تحت الاسم (مثال: DISCOVER MORE)</label><input type="text" id="sfTag" maxlength="40"></div>
+      <div class="field"><label>بريد خدمة العملاء</label><input type="email" id="sfMail" dir="ltr" maxlength="80"></div>
+    </div>
+    <div class="field"><label>نبذة عن المتجر (تظهر في أسفل الموقع)</label><textarea id="sfAbout" rows="2" maxlength="300"></textarea></div>
+    <div class="field"><label>سياسة الاستبدال والاسترجاع (تظهر للعملاء)</label><textarea id="sfRet" rows="3" maxlength="800"></textarea></div>
+    <button class="btn btn-primary" type="button" id="saveSf">${svg('check')} حفظ إعدادات المتجر</button>
+  </div>
+
+  <!-- 7. تخزين الصور -->
+  <div class="card">
+    <div class="card-head"><div><h2>${svg('box')} تخزين الصور في Firestore</h2><p>كل صورة تُقسَّم على عدة مستندات (images + image_chunks)</p></div></div>
+    <div id="imgStats" class="muted" style="font-size:13px">اضغط الزر لعرض الإحصائيات.</div>
+    <div style="margin-top:12px"><button class="btn btn-secondary btn-sm" type="button" id="btnStats">${svg('refresh')} عرض الإحصائيات</button></div>
+  </div>`;
+
+/* ================= الهوية والصور ================= */
+const logoImg = $('#logoImg'), status = $('#uploadStatus'), prog = $('#prog');
+
+function setProgress(p) { prog.hidden = p === null; if (p !== null) $('i', prog).style.width = p + '%'; }
+
+async function handleFile(file) {
+  if (!file) return;
+  if (!/^image\//.test(file.type)) return toast('الملف المختار ليس صورة', 'error');
+  if (file.size > 15 * 1024 * 1024) return toast('الصورة كبيرة جدًا (أكثر من 15 ميجا)', 'error');
+  status.textContent = 'جارٍ ضغط الصورة...'; setProgress(20);
+  try {
+    const r = await compressImage(file, { maxDim: 384, targetBytes: 28000, minDim: 96 });
+    setProgress(100);
+    pending = { dataUrl: r.dataUrl, bytes: r.bytes, width: r.width, height: r.height, name: file.name };
+    logoImg.src = r.dataUrl;
+    const saved = Math.max(0, Math.round((1 - r.bytes / file.size) * 100));
+    const docs = Math.ceil((r.dataUrl.length - r.dataUrl.indexOf(',') - 1) / 30000) + 1;
+    $('#logoInfo').innerHTML = `الحجم الأصلي <b>${fmtKB(file.size)}</b> ← بعد الضغط <b>${fmtKB(r.bytes)}</b> (توفير ${saved}٪)<br>الأبعاد <b>${r.width}×${r.height}</b> · سيُحفظ في <b>${docs}</b> مستندات Firestore<br><span style="color:var(--gold)">اضغط «حفظ هوية الموقع» لتثبيت الشعار.</span>`;
+    status.textContent = '✓ تم الضغط، جاهز للحفظ.';
+    setTimeout(() => setProgress(null), 500);
+  } catch (err) {
+    console.error(err); setProgress(null); status.textContent = 'فشل: ' + err.message; toast('تعذّر معالجة الصورة', 'error');
+  }
+}
+$('#logoFile').addEventListener('change', e => handleFile(e.target.files[0]));
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
+drop.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+
+$('#logoUrlInput').addEventListener('input', e => {
+  const u = e.target.value.trim();
+  if (/^https?:\/\//i.test(u)) { logoImg.src = u; pending = null; }
+});
+
+$('#saveIdentity').addEventListener('click', async e => {
+  const btn = e.currentTarget; btn.disabled = true;
+  const cfg = getConfig();
+  const patch = { siteNameAr: $('#siteNameAr').value.trim(), siteNameEn: $('#siteNameEn').value.trim() || 'WESHAH' };
+  const url = $('#logoUrlInput').value.trim();
+  const urlMode = $('#tab-url').classList.contains('active') && /^https?:\/\//i.test(url);
+  const oldId = cfg.logoImageId;
+  try {
+    if (pending && !urlMode) {
+      status.textContent = 'جارٍ حفظ الصورة في مستندات Firestore...';
+      const r = await saveImage(pending.dataUrl, { kind: 'logo', name: pending.name, width: pending.width, height: pending.height });
+      writeCachedLogo(r.id, pending.dataUrl);
+      patch.logoImageId = r.id; patch.logoUrl = '';
+      status.textContent = `✓ حُفظ الشعار في ${r.docs} مستندات.`;
+    } else if (urlMode) {
+      patch.logoUrl = url; patch.logoImageId = '';
+    }
+    await saveConfig(patch);
+    if (patch.logoImageId !== undefined && oldId && oldId !== patch.logoImageId) deleteImage(oldId).catch(() => {});
+    pending = null; dirty = false;
+    $('#logoInfo').innerHTML = 'تم الحفظ — الشعار الجديد يظهر الآن في كل الصفحات.';
+    document.title = `${patch.siteNameAr || patch.siteNameEn} — الإعدادات`;
+    toast('✓ تم حفظ هوية الموقع');
+  } catch (err) {
+    console.error(err); toast('فشل الحفظ: ' + (err.code || err.message), 'error');
+    status.textContent = 'فشل الحفظ: ' + (err.message || '');
+  } finally { btn.disabled = false; }
+});
+
+['siteNameAr', 'siteNameEn'].forEach(id => $('#' + id).addEventListener('input', () => { dirty = true; }));
+
+function fillForm() {
+  const c = getConfig();
+  if (!dirty) { $('#siteNameAr').value = c.siteNameAr; $('#siteNameEn').value = c.siteNameEn === 'WESHAH' && !c.siteNameAr ? '' : c.siteNameEn; }
+  $('#accMode').value = c.accounting.countMode;
+  $('#accLow').value = c.accounting.lowStock;
+  $('#accCur').value = c.accounting.currency;
+  $('#sfShip').value = c.storefront.shippingFee; $('#sfFree').value = c.storefront.freeShippingOver; $('#sfPhone').value = c.storefront.phone || ''; $('#sfAnn').value = c.storefront.announcement || ''; $('#sfTag').value = c.storefront.tagline || ''; $('#sfMail').value = c.storefront.email || ''; $('#sfAbout').value = c.storefront.about || ''; $('#sfRet').value = c.storefront.returnPolicy || '';
+  if (!pending) refreshBrand(c).then(src => { logoImg.src = src; });
+  renderAll();
+}
+
+/* ================= تطبيق الهاتف ================= */
+function renderPwa() {
+  const https = location.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(location.hostname);
+  const sw = 'serviceWorker' in navigator;
+  const installed = isStandalone();
+  const row = (ok, t, s) => `<div class="setting-row"><div class="t"><b>${t}</b><small>${s}</small></div><span class="badge ${ok === null ? 'gray' : ok ? 'green' : 'red'}">${ok === null ? '—' : ok ? 'جاهز' : 'غير متاح'}</span></div>`;
+  $('#pwaRows').innerHTML =
+    row(https, 'اتصال HTTPS', https ? 'مطلوب لتثبيت التطبيق' : 'ارفع الموقع على رابط HTTPS ليظهر زر التثبيت') +
+    row(sw, 'العمل مع ضعف الاتصال (Service Worker)', sw ? 'تُحفظ الصفحات والبيانات محليًا' : 'المتصفح لا يدعمه') +
+    row(true, 'ملف التطبيق (manifest) والأيقونات', 'اسم التطبيق وألوانه وأيقونته') +
+    row(installed ? true : canInstall() ? true : null, installed ? 'التطبيق مثبّت ويعمل بشاشة كاملة' : canInstall() ? 'جاهز للتثبيت الآن' : 'حالة التثبيت', installed ? 'أنت تفتح اللوحة كتطبيق' : canInstall() ? 'اضغط تثبيت التطبيق' : (isIOS() ? 'على الآيفون: مشاركة ← إضافة إلى الشاشة الرئيسية' : 'من قائمة المتصفح ⋮ ← تثبيت التطبيق'));
+  $('#btnInstall').hidden = installed;
+}
+$('#btnInstall').addEventListener('click', installApp);
+document.addEventListener('weshah:installable', renderPwa);
+
+/* ================= مدير الأزرار ================= */
+const LISTS = { actions: 'الزر', nav: 'الرابط' };
+const DEFAULTS = { actions: DEFAULT_ACTIONS, nav: DEFAULT_NAV };
+const listOf = key => getConfig()[key].map(x => ({ ...x }));
+
+async function persist(key, list, msg) {
+  try { await saveConfig({ [key]: list }); if (msg) toast(msg); renderAll(); }
+  catch (err) { console.error(err); toast('فشل الحفظ: ' + (err.code || err.message), 'error'); renderAll(); }
+}
+
+function itemRow(key, it, trash = false) {
+  const color = COLORS[it.color] || COLORS.green;
+  const hidden = it.visible === false;
+  const icon = key === 'actions' ? `<div class="bi-icon" style="background:${color}">${svg(it.icon)}</div>` : `<div class="bi-icon" style="background:${COLORS.dark}">${svg(it.icon)}</div>`;
+  const info = `<div class="bi-info"><b>${esc(it.name)} ${it.builtin ? '<span class="badge gray">مدمج</span>' : '<span class="badge blue">مخصص</span>'}${it.locked ? ' <span class="badge gold">ثابت</span>' : ''}${hidden && !trash ? ' <span class="badge red">مخفي</span>' : ''}</b><small>${esc(it.href)}${it.desc ? ' · ' + esc(it.desc) : ''}</small></div>`;
+  if (trash) {
+    return `<div class="btn-item">${icon}${info}<div class="bi-actions">
+      <button class="btn btn-primary btn-sm" type="button" data-act="restore" data-key="${key}" data-id="${esc(it.id)}">${svg('undo')} استرجاع</button>
+      ${it.builtin ? '' : `<button class="btn btn-danger btn-sm" type="button" data-act="purge" data-key="${key}" data-id="${esc(it.id)}">${svg('trash')} حذف نهائي</button>`}</div></div>`;
+  }
+  return `<div class="btn-item ${hidden ? 'hidden-item' : ''}">${icon}${info}<div class="bi-actions">
+    <button class="btn btn-secondary btn-sm btn-icon" type="button" data-act="move-up" data-key="${key}" data-id="${esc(it.id)}" aria-label="تحريك لأعلى">${svg('up')}</button>
+    <button class="btn btn-secondary btn-sm btn-icon" type="button" data-act="move-down" data-key="${key}" data-id="${esc(it.id)}" aria-label="تحريك لأسفل">${svg('down')}</button>
+    <label class="switch" title="${it.locked ? 'عنصر ثابت لا يمكن إخفاؤه' : 'إظهار / إخفاء'}"><input type="checkbox" data-change="vis" data-key="${key}" data-id="${esc(it.id)}" ${hidden ? '' : 'checked'} ${it.locked ? 'disabled' : ''} aria-label="إظهار ${esc(it.name)}"><span></span></label>
+    <button class="btn btn-secondary btn-sm btn-icon" type="button" data-act="edit" data-key="${key}" data-id="${esc(it.id)}" aria-label="تعديل">${svg('edit')}</button>
+    <button class="btn btn-danger btn-sm btn-icon" type="button" data-act="del" data-key="${key}" data-id="${esc(it.id)}" ${it.locked ? 'disabled' : ''} aria-label="حذف">${svg('trash')}</button></div></div>`;
+}
+
+function renderManager(key) {
+  const list = getConfig()[key];
+  const live = list.filter(x => !x.deleted), trash = list.filter(x => x.deleted);
+  $('#list-' + key).innerHTML = live.length ? live.map(it => itemRow(key, it)).join('') : `<div class="empty-list">${svg('plus')}<div>لا توجد عناصر. اضغط «إضافة» أو «الافتراضي».</div></div>`;
+  $('#trashlist-' + key).innerHTML = trash.map(it => itemRow(key, it, true)).join('') || '<div class="empty-list">لا توجد عناصر محذوفة.</div>';
+  $('#trashCount-' + key).textContent = trash.length ? `(${trash.length})` : '';
+}
+
+function iconPicker(selected) {
+  return `<div class="icon-picker" id="iconPicker">${ICON_KEYS.map(k => `<button type="button" class="icon-opt ${k === selected ? 'selected' : ''}" data-icon="${k}" aria-label="${k}">${svg(k)}</button>`).join('')}</div>`;
+}
+
+function openItemModal(key, id) {
+  const list = listOf(key), it = id ? list.find(x => x.id === id) : null;
+  let icon = it?.icon || (key === 'actions' ? 'plus' : 'link'), color = it?.color || 'green';
+  const body = `
+    <div class="field"><label>الاسم</label><input id="mName" maxlength="40" value="${esc(it?.name || '')}" placeholder="مثال: إضافة منتج"></div>
+    <div class="field"><label>رابط التحويل</label><input id="mHref" list="pagesList" dir="ltr" value="${esc(it?.href || '')}" placeholder="add-product.html أو https://..."><datalist id="pagesList">${PAGES.map(p => `<option value="${esc(p)}">`).join('')}</datalist><small>صفحة داخلية أو رابط خارجي كامل.</small></div>
+    ${key === 'actions' ? `<div class="field"><label>وصف مختصر (اختياري)</label><input id="mDesc" maxlength="60" value="${esc(it?.desc || '')}"></div>` : ''}
+    <div class="field"><label>الأيقونة</label>${iconPicker(icon)}</div>
+    ${key === 'actions' ? `<div class="field"><label>اللون</label><div class="swatches" id="swatches">${Object.entries(COLORS).map(([k, g]) => `<button type="button" class="swatch ${k === color ? 'selected' : ''}" data-color="${k}" style="background:${g}" aria-label="${k}"></button>`).join('')}</div></div>` : ''}
+    <label class="check-row"><input type="checkbox" id="mNew" ${it?.newTab ? 'checked' : ''}> فتح في نافذة جديدة</label>
+    ${key === 'nav' ? `<label class="check-row" style="margin-top:10px"><input type="checkbox" id="mSep" ${it?.sep ? 'checked' : ''}> فاصل قبل هذا الرابط</label>` : ''}`;
+  const box = openModal({
+    title: it ? 'تعديل' : (key === 'actions' ? 'إضافة زر جديد' : 'إضافة رابط جديد'), body, saveLabel: 'حفظ', wide: true,
+    onSave: async b => {
+      const name = $('#mName', b).value.trim(), raw = $('#mHref', b).value.trim();
+      if (!name || !raw) throw new Error('الاسم والرابط مطلوبان');
+      const href = safeHref(raw);
+      if (href === '#' && raw !== '#') throw new Error('هذا الرابط غير مسموح');
+      const next = {
+        ...(it || { id: (key === 'actions' ? 'act_' : 'nav_') + uid('c'), builtin: false }),
+        name, href, icon, newTab: $('#mNew', b).checked
+      };
+      if (key === 'actions') { next.desc = $('#mDesc', b).value.trim(); next.color = color; }
+      if (key === 'nav') next.sep = $('#mSep', b).checked;
+      const l = listOf(key);
+      if (it) l[l.findIndex(x => x.id === it.id)] = next; else l.push(next);
+      await saveConfig({ [key]: l });
+      toast(it ? '✓ تم التعديل' : '✓ تمت الإضافة'); renderAll();
+    }
+  });
+  box.addEventListener('click', e => {
+    const ib = e.target.closest('.icon-opt'); if (ib) { icon = ib.dataset.icon; $$('.icon-opt', box).forEach(x => x.classList.toggle('selected', x === ib)); }
+    const sw = e.target.closest('.swatch'); if (sw) { color = sw.dataset.color; $$('.swatch', box).forEach(x => x.classList.toggle('selected', x === sw)); }
+  });
+}
+
+function move(key, id, dir) {
+  const list = listOf(key), i = list.findIndex(x => x.id === id);
+  const idxs = list.map((x, k) => (x.deleted ? -1 : k)).filter(k => k >= 0);
+  const pos = idxs.indexOf(i), j = idxs[pos + dir];
+  if (j === undefined) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  persist(key, list);
+}
+
+const handlers = {
+  'logo-tab': id => {
+    $$('#logoTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.id === id));
+    $$('#tab-upload,#tab-url').forEach(t => t.classList.toggle('active', t.id === 'tab-' + id));
+  },
+  add: (id, el) => openItemModal(el.dataset.key),
+  edit: (id, el) => openItemModal(el.dataset.key, id),
+  'move-up': (id, el) => move(el.dataset.key, id, -1),
+  'move-down': (id, el) => move(el.dataset.key, id, 1),
+  del: async (id, el) => {
+    const key = el.dataset.key, l = listOf(key), it = l.find(x => x.id === id); if (!it || it.locked) return;
+    if (!await confirmDialog(`نقل «${it.name}» إلى المحذوفات؟ يمكنك استرجاعه في أي وقت.`, { okLabel: 'نقل للمحذوفات' })) return;
+    it.deleted = true; persist(key, l, 'تم النقل إلى المحذوفات');
+  },
+  restore: (id, el) => { const key = el.dataset.key, l = listOf(key), it = l.find(x => x.id === id); if (!it) return; it.deleted = false; it.visible = true; persist(key, l, '✓ تم الاسترجاع'); },
+  purge: async (id, el) => {
+    const key = el.dataset.key, l = listOf(key), it = l.find(x => x.id === id); if (!it) return;
+    if (!await confirmDialog(`حذف «${it.name}» نهائيًا؟ لا يمكن التراجع.`, { okLabel: 'حذف نهائي' })) return;
+    persist(key, l.filter(x => x.id !== id), 'تم الحذف النهائي');
+  },
+  'reset-list': async (id, el) => {
+    const key = el.dataset.key;
+    if (!await confirmDialog(`استعادة ${key === 'actions' ? 'أزرار الصفحة الرئيسية' : 'القائمة الجانبية'} للوضع الافتراضي؟ ستُحذف التخصيصات والعناصر المخصصة.`, { okLabel: 'استعادة', danger: false })) return;
+    persist(key, DEFAULTS[key].map(x => ({ ...x })), '✓ تمت الاستعادة');
+  }
+};
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-act]'); if (!el || !handlers[el.dataset.act]) return;
+  try { await handlers[el.dataset.act](el.dataset.id, el); } catch (err) { console.error(err); toast(err.message || 'حدث خطأ', 'error'); }
+});
+document.addEventListener('change', e => {
+  const v = e.target.closest('[data-change="vis"]');
+  if (v) {
+    const key = v.dataset.key, l = listOf(key), it = l.find(x => x.id === v.dataset.id); if (!it || it.locked) return;
+    it.visible = v.checked; persist(key, l, v.checked ? 'تم إظهار العنصر' : 'تم إخفاء العنصر');
+    return;
+  }
+  const s = e.target.closest('[data-change="section"]');
+  if (s) saveConfig({ sections: { ...getConfig().sections, [s.dataset.id]: s.checked } }).then(() => toast('✓ تم الحفظ')).catch(err => toast('فشل الحفظ: ' + err.message, 'error'));
+});
+
+/* ================= الأقسام والمحاسبة ================= */
+function renderSections() {
+  const sec = getConfig().sections;
+  $('#sectionRows').innerHTML = Object.keys(DEFAULT_SECTIONS).map(k => `
+    <div class="setting-row"><div class="t"><b>${esc(SECTION_LABELS[k])}</b></div>
+    <label class="switch"><input type="checkbox" data-change="section" data-id="${k}" ${sec[k] !== false ? 'checked' : ''} aria-label="${esc(SECTION_LABELS[k])}"><span></span></label></div>`).join('');
+}
+
+$('#saveSf').addEventListener('click', async e => {
+  const b = e.currentTarget; b.disabled = true;
+  try {
+    const n = v => { const x = parseFloat(v); return Number.isFinite(x) && x >= 0 ? x : 0; };
+    await saveConfig({ storefront: { shippingFee: n($('#sfShip').value), freeShippingOver: n($('#sfFree').value), phone: $('#sfPhone').value.replace(/[^\d]/g, ''), announcement: $('#sfAnn').value.trim(), tagline: $('#sfTag').value.trim(), email: $('#sfMail').value.trim(), about: $('#sfAbout').value.trim(), returnPolicy: $('#sfRet').value.trim() } });
+    toast('تم حفظ إعدادات المتجر', 'success');
+  } catch (err) { console.error(err); toast('تعذّر الحفظ', 'error'); }
+  b.disabled = false;
+});
+$('#saveAcc').addEventListener('click', async e => {
+  const btn = e.currentTarget; btn.disabled = true;
+  try {
+    const low = Math.max(0, Math.round(Number($('#accLow').value)));
+    await saveConfig({ accounting: { countMode: $('#accMode').value, lowStock: Number.isFinite(low) ? low : DEFAULT_ACCOUNTING.lowStock, currency: $('#accCur').value.trim() || DEFAULT_ACCOUNTING.currency } });
+    toast('✓ تم حفظ إعدادات المحاسبة');
+  } catch (err) { toast('فشل الحفظ: ' + (err.code || err.message), 'error'); }
+  finally { btn.disabled = false; }
+});
+
+$('#btnStats').addEventListener('click', async e => {
+  const btn = e.currentTarget; btn.disabled = true; $('#imgStats').textContent = 'جارٍ الحساب...';
+  try {
+    const s = await imageStats();
+    $('#imgStats').innerHTML = `عدد الصور: <b>${s.images}</b> · عدد المستندات (أجزاء الصور): <b>${s.chunks}</b> · الحجم التقريبي: <b>${fmtKB(s.bytes)}</b>`;
+  } catch (err) { $('#imgStats').innerHTML = `<span class="neg">تعذّر القراءة: ${esc(err.code || err.message)} — تأكد من قواعد Firestore للمجموعتين images و image_chunks.</span>`; }
+  finally { btn.disabled = false; }
+});
+
+/* ================= تشغيل ================= */
+function renderAll() { renderManager('actions'); renderManager('nav'); renderSections(); renderPwa(); }
+renderAll();
+fillForm();
+document.addEventListener('weshah:config-ready', fillForm);
+</script>
+</body>
+</html>

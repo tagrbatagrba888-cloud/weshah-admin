@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#073b29">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WESHAH">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>WESHAH — تسجيل الدخول</title>
+<link rel="stylesheet" href="weshah.css">
+<style>
+body{display:flex;flex-direction:column}
+.login-top{background:var(--green);color:var(--lime);padding:calc(12px + var(--safe-t)) 18px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+body[data-theme="dark"] .login-top{background:#0a2c20}
+.login-top .logo{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--lime)}
+.login-top .logo-img{height:48px;width:48px}
+.top-actions{display:flex;align-items:center;gap:9px}
+.top-btn{color:var(--lime);font-size:12px;text-decoration:none;border:1px solid rgba(247,235,213,.35);padding:9px 14px;border-radius:11px;background:none;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.2s;font-family:inherit}
+.top-btn:hover{background:rgba(247,235,213,.12)}
+.top-icon{background:rgba(247,235,213,.12);border:1px solid rgba(247,235,213,.35);color:var(--lime);width:42px;height:42px;border-radius:12px;display:grid;place-items:center;cursor:pointer}
+.login-main{flex:1;display:grid;grid-template-columns:1.05fr .95fr}
+.login-visual{position:relative;overflow:hidden;background:#0b2b1f;display:flex;flex-direction:column;justify-content:flex-end;padding:38px 40px;color:#fff}
+.login-visual img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.5) saturate(1.05)}
+.login-visual::after{content:"";position:absolute;inset:0;background:linear-gradient(160deg,rgba(7,59,41,.72),rgba(9,27,21,.88))}
+.visual-content{position:relative;z-index:1;margin-top:auto}
+.eyebrow{font-size:11px;letter-spacing:2.5px;color:var(--gold);font-weight:700;margin-bottom:16px;display:block}
+.visual-content h1{font-size:clamp(26px,3.2vw,42px);line-height:1.45;margin:0 0 14px;font-weight:700;max-width:460px}
+.visual-content p{font-size:13.5px;line-height:2.1;color:#dbe6da;max-width:420px;margin:0 0 24px}
+.visual-badges{display:flex;gap:10px;flex-wrap:wrap}
+.vbadge{background:rgba(247,235,213,.1);border:1px solid rgba(247,235,213,.28);border-radius:12px;padding:10px 14px;font-size:12px;color:var(--lime);display:flex;align-items:center;gap:8px;backdrop-filter:blur(6px)}
+.login-form-wrap{display:flex;align-items:center;justify-content:center;padding:36px 24px;background:var(--cream)}
+.login-card{width:100%;max-width:440px;background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:34px 30px;box-shadow:var(--shadow)}
+.head-icon{width:56px;height:56px;border-radius:16px;background:linear-gradient(145deg,#0b4a33,#05291e);display:grid;place-items:center;color:var(--lime);margin-bottom:18px;box-shadow:0 8px 20px rgba(7,59,41,.25)}
+.head-icon .ic{width:26px;height:26px}
+.login-card h2{font-size:24px;margin:0 0 6px;font-weight:700}
+.login-card .sub{font-size:13px;color:var(--muted);line-height:1.9;margin:0 0 22px}
+.input-wrap{position:relative;display:flex;align-items:center}
+.input-wrap .lead{position:absolute;right:14px;color:var(--muted);pointer-events:none}
+.input-wrap input{padding:14px 44px !important;font-size:15px !important}
+.input-wrap input.invalid{border-color:var(--red) !important;box-shadow:0 0 0 3px rgba(185,93,80,.12) !important}
+.toggle-pass{position:absolute;left:6px;background:none;border:none;cursor:pointer;padding:9px;color:var(--muted);display:grid;place-items:center;border-radius:9px}
+.toggle-pass:hover{color:var(--green2);background:var(--soft)}
+.row-between{display:flex;align-items:center;justify-content:space-between;margin:2px 0 20px;font-size:12.5px;flex-wrap:wrap;gap:10px}
+.check{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--muted);user-select:none}
+.check input{width:17px;height:17px;accent-color:var(--green)}
+.forgot{color:var(--green2);font-weight:600;text-decoration:none;font-size:12.5px;background:none;border:none;cursor:pointer;padding:0}
+body[data-theme="dark"] .forgot{color:#e0c58f}
+.btn-login{width:100%;padding:15px;font-size:14.5px}
+.spinner{width:17px;height:17px;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.alert{display:none;font-size:12.5px;padding:12px 14px;border-radius:12px;margin-bottom:16px;line-height:1.8;align-items:flex-start;gap:9px}
+.alert .ic{margin-top:3px}
+.alert.show{display:flex}
+.alert.error{background:rgba(185,93,80,.11);color:#a44a3e;border:1px solid rgba(185,93,80,.28)}
+.alert.success{background:rgba(7,59,41,.09);color:var(--green);border:1px solid rgba(7,59,41,.22)}
+body[data-theme="dark"] .alert.error{color:#e0a79f}
+body[data-theme="dark"] .alert.success{color:#9ad6b8}
+.secure-note{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:20px;font-size:11.5px;color:var(--muted);text-align:center}
+.secure-note .ic{width:14px;height:14px}
+.install-card{margin-top:16px;display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:14px;background:var(--soft);border:1px dashed var(--line);font-size:12.5px}
+.install-card .btn{margin-right:auto}
+.login-foot{background:#122b25;padding:16px 16px calc(16px + var(--safe-b));text-align:center;font-size:11.5px;color:#91a398}
+.login-foot a{color:var(--gold);text-decoration:none}
+body[data-theme="dark"] .login-foot{background:#0a1f17}
+@media(max-width:920px){
+  .login-main{grid-template-columns:1fr}
+  .login-visual{display:none}
+  .login-form-wrap{padding:26px 16px 40px;align-items:flex-start}
+}
+@media(max-width:600px){
+  .login-card{padding:26px 20px;border-radius:22px}
+  .top-btn .txt{display:none}
+  .login-top .brand{font-size:19px}
+}
+</style>
+</head>
+<body data-theme="light">
+
+<div class="login-top">
+  <a class="logo" href="login.html">
+    <img src="https://i.ibb.co/kgKm56XB/file-00000000090c820a908068c98fae1f9.webp" alt="WESHAH" class="logo-img js-logo">
+    <span class="brand"><span class="js-name">WESHAH</span><small>DISCOVER MORE</small></span>
+  </a>
+  <div class="top-actions">
+    <a class="top-btn" href="WESHAH_marketplace_day_night.html" aria-label="عودة للموقع"><span id="homeIcon"></span><span class="txt">عودة للموقع</span></a>
+    <button class="top-icon" type="button" onclick="toggleTheme()" aria-label="تبديل الوضع الليلي والنهاري"><svg class="ic js-theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></svg></button>
+  </div>
+</div>
+
+<div class="login-main">
+  <div class="login-visual">
+    <img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=85" alt="" loading="lazy">
+    <div class="visual-content">
+      <span class="eyebrow">✦ ADMIN PANEL · WESHAH</span>
+      <h1>لوحة تحكم WESHAH<br>إدارة السوق بذكاء</h1>
+      <p>تحكم كامل في المنتجات والطلبات والمصروفات وأكواد الخصم، مع محاسبة دقيقة للأرباح والخسائر في مكان واحد.</p>
+      <div class="visual-badges" id="vbadges"></div>
+    </div>
+  </div>
+
+  <div class="login-form-wrap">
+    <div class="login-card">
+      <div class="head-icon" id="headIcon"></div>
+      <h2>تسجيل الدخول</h2>
+      <p class="sub">أدخل بيانات الدخول للوصول إلى لوحة التحكم</p>
+
+      <div class="alert error" id="errorAlert" role="alert"><span id="errIcon"></span><span id="errorMsg"></span></div>
+      <div class="alert success" id="successAlert" role="status"><span id="okIcon"></span><span>تم التحقق بنجاح... جارٍ التوجيه</span></div>
+
+      <form id="loginForm" autocomplete="off" novalidate>
+        <div class="field">
+          <label for="username">اسم المستخدم</label>
+          <div class="input-wrap">
+            <span class="lead" id="userIcon"></span>
+            <input type="text" id="username" placeholder="أدخل اسم المستخدم" required autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="field">
+          <label for="password">كلمة المرور</label>
+          <div class="input-wrap">
+            <span class="lead" id="lockIcon"></span>
+            <input type="password" id="password" placeholder="أدخل كلمة المرور" required autocomplete="current-password">
+            <button type="button" class="toggle-pass" id="togglePass" aria-label="إظهار كلمة المرور"></button>
+          </div>
+        </div>
+        <div class="row-between">
+          <label class="check"><input type="checkbox" id="remember"> تذكرني</label>
+          <button type="button" class="forgot" id="forgot">نسيت كلمة المرور؟</button>
+        </div>
+        <button type="submit" class="btn btn-primary btn-login" id="loginBtn"><span>دخول إلى لوحة التحكم</span></button>
+      </form>
+
+      <div class="install-card js-install" hidden>
+        <span id="installIcon"></span>
+        <span>ثبّت اللوحة كتطبيق على هاتفك</span>
+        <button type="button" class="btn btn-gold btn-sm" onclick="installApp()">تثبيت</button>
+      </div>
+
+      <div class="secure-note"><span id="shieldIcon"></span> جلسة محمية · تنتهي تلقائيًا · محاولات الدخول محدودة</div>
+    </div>
+  </div>
+</div>
+
+<div class="login-foot">© 2026 <a href="WESHAH_marketplace_day_night.html">WESHAH</a> — جميع الحقوق محفوظة · لوحة التحكم الإدارية</div>
+
+<script type="module">
+import { $, svg, initTheme, getSession, setSession, sha256Hex, registerSW, paintBrandFromCache, installApp, canInstall, isStandalone, isIOS } from './weshah-lite.js';
+
+initTheme();
+registerSW();
+paintBrandFromCache();
+
+// لو الجلسة سارية ندخل مباشرة
+if (getSession()) location.replace('index.html');
+
+/* أيقونات */
+$('#homeIcon').innerHTML = svg('home');
+$('#headIcon').innerHTML = svg('lock');
+$('#errIcon').innerHTML = svg('alert');
+$('#okIcon').innerHTML = svg('check');
+$('#userIcon').innerHTML = svg('user');
+$('#lockIcon').innerHTML = svg('lock');
+$('#shieldIcon').innerHTML = svg('shield');
+$('#installIcon').innerHTML = svg('install');
+$('#vbadges').innerHTML = [['shield', 'دخول آمن'], ['calc', 'محاسبة دقيقة'], ['install', 'يعمل كتطبيق']]
+  .map(([i, t]) => `<div class="vbadge">${svg(i)} ${t}</div>`).join('');
+$('#togglePass').innerHTML = svg('eye');
+if (canInstall() && !isStandalone()) document.querySelector('.install-card').hidden = false;
+
+/* إظهار/إخفاء كلمة المرور */
+$('#togglePass').addEventListener('click', () => {
+  const inp = $('#password'); const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  $('#togglePass').innerHTML = svg(show ? 'eyeoff' : 'eye');
+  $('#togglePass').setAttribute('aria-label', show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+});
+$('#forgot').addEventListener('click', () => alert('للاستفسار عن بيانات الدخول، يرجى التواصل مع مدير النظام.'));
+
+/* ===== منطق الدخول =====
+   لا نخزّن كلمة المرور نصًا داخل الصفحة؛ نقارن بصمة SHA-256 فقط. */
+const CRED_HASH = '86642f43971d14fd06d23446d73032062db573e9995913ecc87e41a0f7b55823';
+const SALT = 'weshah::v1::';
+const LOCK_KEY = 'weshah_login_guard';
+const MAX_TRIES = 5, LOCK_MS = 5 * 60 * 1000;
+
+const guard = () => { try { return JSON.parse(localStorage.getItem(LOCK_KEY) || '{}'); } catch (_) { return {}; } };
+const saveGuard = g => { try { localStorage.setItem(LOCK_KEY, JSON.stringify(g)); } catch (_) {} };
+
+const form = $('#loginForm'), u = $('#username'), p = $('#password'), btn = $('#loginBtn');
+const errBox = $('#errorAlert'), okBox = $('#successAlert');
+const btnHTML = btn.innerHTML;
+
+function showError(msg) { $('#errorMsg').textContent = msg; errBox.classList.add('show'); okBox.classList.remove('show'); u.classList.add('invalid'); p.classList.add('invalid'); }
+function clearError() { errBox.classList.remove('show'); u.classList.remove('invalid'); p.classList.remove('invalid'); }
+[u, p].forEach(el => el.addEventListener('input', clearError));
+u.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); p.focus(); } });
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  clearError();
+  const user = u.value.trim(), pass = p.value;
+  if (!user || !pass) return showError('يرجى إدخال اسم المستخدم وكلمة المرور');
+
+  const g = guard();
+  if (g.until && g.until > Date.now()) {
+    const mins = Math.ceil((g.until - Date.now()) / 60000);
+    return showError(`تم إيقاف المحاولات مؤقتًا. حاول بعد ${mins} دقيقة.`);
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span><span>جارٍ التحقق...</span>';
+  const hash = await sha256Hex(SALT + user + ':' + pass);
+  await new Promise(r => setTimeout(r, 450));
+
+  if (hash === CRED_HASH) {
+    saveGuard({});
+    okBox.classList.add('show');
+    setSession(user, $('#remember').checked);
+    btn.innerHTML = '<span>تم التحقق ✓</span>';
+    setTimeout(() => { location.href = 'index.html'; }, 700);
+  } else {
+    const n = (g.n || 0) + 1;
+    if (n >= MAX_TRIES) { saveGuard({ n: 0, until: Date.now() + LOCK_MS }); showError('تجاوزت عدد المحاولات المسموحة. تم إيقاف الدخول 5 دقائق.'); }
+    else { saveGuard({ n }); showError(`اسم المستخدم أو كلمة المرور غير صحيحة. (متبقي ${MAX_TRIES - n} محاولات)`); }
+    btn.disabled = false; btn.innerHTML = btnHTML;
+    p.value = ''; p.focus();
+  }
+});
+</script>
+</body>
+</html>

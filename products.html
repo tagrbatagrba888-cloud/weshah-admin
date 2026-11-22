@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#073b29">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WESHAH">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>WESHAH — المنتجات</title>
+<link rel="stylesheet" href="weshah.css">
+<style>
+.pg-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.pg-tools .search{flex:1;min-width:200px;position:relative}
+.pg-tools .search input{width:100%;padding:10px 40px 10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);font-family:inherit;font-size:13.5px;outline:none}
+.pg-tools .search input:focus{border-color:var(--green2)}
+.pg-tools .search .ic{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--muted)}
+.pg-tools select{padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);font-family:inherit;font-size:13px}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:12px;overflow:hidden}
+.seg button{border:0;background:var(--paper);color:var(--ink);padding:9px 13px;font-family:inherit;font-size:12.5px;font-weight:600;display:flex;gap:6px;align-items:center}
+.seg button.on{background:var(--green);color:#fff}
+body[data-theme="dark"] .seg button.on{background:#1b6247}
+.bulk{position:sticky;top:8px;z-index:20;display:none;align-items:center;gap:8px;flex-wrap:wrap;background:var(--green);color:#fff;border-radius:14px;padding:10px 14px;margin-bottom:12px;box-shadow:0 10px 30px rgba(7,59,41,.3)}
+.bulk.show{display:flex}.bulk b{margin-left:auto}
+.bulk .btn{background:rgba(255,255,255,.14);color:#fff}.bulk .btn:hover{background:rgba(255,255,255,.25)}.bulk .btn.d{background:#b95d50}
+.pt td{vertical-align:middle}
+.pt .nm{display:flex;gap:11px;align-items:center;min-width:220px}
+.pt .nm img,.pt .nm .thumb{width:48px;height:48px;border-radius:11px;object-fit:cover;background:var(--soft);flex-shrink:0}
+.pt .nm a{font-weight:700;color:inherit}.pt .nm a:hover{color:var(--green2)}
+.pt .nm small{display:block;color:var(--muted);font-size:11.5px}
+.pt .act{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap;max-width:128px;margin-right:auto}
+.pt td.n,.pt th.n{white-space:nowrap}
+.pt .nm{min-width:180px}
+.pcard .act{flex-wrap:wrap;max-width:none;justify-content:flex-start}
+.pt th.ck,.pt td.ck{width:36px}
+.pt input[type=checkbox],.pcard input[type=checkbox]{width:17px;height:17px;accent-color:var(--green2)}
+.mg{font-size:11px;font-weight:700}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.pcard{background:var(--paper);border:1px solid var(--line);border-radius:16px;overflow:hidden;position:relative;display:flex;flex-direction:column;transition:.2s}
+.pcard:hover{box-shadow:0 12px 30px rgba(22,42,33,.12)}
+.pcard.sel{outline:2.5px solid var(--green2)}
+.pcard .im{aspect-ratio:1;background:var(--soft);display:block;position:relative}.pcard .im img{width:100%;height:100%;object-fit:cover;display:block}
+.pcard .im .ph{display:grid;place-items:center;height:100%;color:var(--muted)}
+.pcard .ck{position:absolute;top:9px;right:9px;background:rgba(255,255,255,.92);border-radius:7px;padding:3px;display:flex}
+.pcard .st{position:absolute;top:9px;left:9px}
+.pcard .bd{padding:11px 13px;display:flex;flex-direction:column;gap:4px;flex:1}
+.pcard h3{margin:0;font-size:14px;line-height:1.5}.pcard .pr{display:flex;gap:7px;align-items:baseline}.pcard .pr s{color:var(--muted);font-size:12px}
+.pcard .acts{display:flex;gap:6px;margin-top:auto;padding-top:8px}
+.badge.gray{background:rgba(120,132,125,.18);color:var(--muted)}
+.qe-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pager{display:flex;justify-content:center;gap:8px;align-items:center;margin-top:16px}
+.dup-prog{font-size:12px;color:var(--muted);margin-top:6px}
+@media(max-width:700px){.pt .hide-m{display:none}.pg-tools .seg{order:3}}
+</style>
+</head>
+<body data-theme="light">
+<div id="app"></div>
+
+<script type="module">
+import {
+  $, $$, esc, svg, mountShell, getConfig, hydrateImages, openModal, confirmDialog, toast, download, debounce,
+  db, collection, getDocs, doc, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp,
+  deleteImage, getImageDataUrl, saveImage
+} from './weshah-core.js';
+import * as A from './weshah-accounting.js';
+
+const page = mountShell({
+  title: 'المنتجات',
+  sub: 'إدارة كاملة للمنتجات والمخزون والأسعار والأرباح',
+  tools: `<button class="icon-btn" type="button" data-act="reload" title="تحديث" aria-label="تحديث">${svg('refresh')}<\/button>`
+});
+
+/* ================= الحالة ================= */
+const store = { products: [], orders: [], coupons: [], errors: {} };
+const ui = { q: '', status: 'all', cat: '', sort: 'new', view: 'table', page: 1, per: 25, sel: new Set(), loaded: false };
+try { Object.assign(ui, JSON.parse(localStorage.getItem('weshah-products-ui') || '{}'), { q: '', sel: new Set(), page: 1, loaded: false }); } catch (_) {}
+const saveUi = () => { try { localStorage.setItem('weshah-products-ui', JSON.stringify({ status: ui.status, cat: ui.cat, sort: ui.sort, view: ui.view, per: ui.per })); } catch (_) {} };
+
+const cur = () => getConfig().accounting.currency || 'ج.م';
+const low = () => Number(getConfig().accounting.lowStock) || 0;
+const m = n => A.fmtMoney(n, cur());
+const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+const STATUS = { active: ['منشور', 'green'], draft: ['مسودة', 'gold'], archived: ['مؤرشف', 'gray'] };
+const safeUrl = u => (/^(https?:\/\/|data:image\/)/i.test(String(u || '')) ? u : '');
+const toMs = v => { const d = A.toDate(v); return d ? d.getTime() : 0; };
+
+/* ================= التحميل ================= */
+async function load() {
+  const cols = ['products', 'orders', 'coupons'];
+  const res = await Promise.allSettled(cols.map(c => getDocs(collection(db, c))));
+  res.forEach((r, i) => {
+    if (r.status === 'fulfilled') { store[cols[i]] = r.value.docs.map(d => ({ id: d.id, ...d.data() })); delete store.errors[cols[i]]; }
+    else { store.errors[cols[i]] = r.reason?.code || r.reason?.message || 'error'; store[cols[i]] = []; console.warn('load', cols[i], r.reason); }
+  });
+  ui.loaded = true; derive(); render();
+}
+
+/* ================= الاشتقاق ================= */
+let P = [], byId = new Map();
+function derive() {
+  const sold = new Map();
+  store.orders.forEach(o => {
+    if (['cancelled', 'refunded'].includes(o.status)) return;
+    (Array.isArray(o.items) ? o.items : []).forEach(i => { if (!i || !i.productId) return; const s = sold.get(i.productId) || { qty: 0, rev: 0 }; s.qty += num(i.qty); s.rev += num(i.qty) * num(i.price); sold.set(i.productId, s); });
+  });
+  const cpn = new Map(); store.coupons.forEach(c => { if (c.productId) cpn.set(c.productId, (cpn.get(c.productId) || 0) + 1); });
+  P = store.products.map(d => {
+    const variants = Array.isArray(d.variants) ? d.variants : [];
+    const track = d.stock !== null && d.stock !== undefined || variants.length > 0;
+    const stock = variants.length ? variants.reduce((s, v) => s + Math.max(0, num(v.stock)), 0) : (track ? Math.round(num(d.stock)) : null);
+    const price = num(d.price), cost = num(d.cost), hasCost = d.cost !== undefined && d.cost !== null && d.cost !== '';
+    const images = Array.isArray(d.images) && d.images.length ? d.images : (d.imageId ? [{ kind: 'doc', id: d.imageId }] : (safeUrl(d.image) ? [{ kind: 'url', url: d.image }] : []));
+    const s = sold.get(d.id) || { qty: 0, rev: 0 };
+    return { id: d.id, raw: d, name: String(d.name || 'بدون اسم'), brand: d.brand || '', category: String(d.category || '').trim(), sku: d.sku || '', barcode: d.barcode || '',
+      status: STATUS[d.status] ? d.status : 'active', featured: !!d.featured, price, compare: num(d.comparePrice), cost, hasCost, variants, hasVariants: variants.length > 0, stock, images,
+      margin: price > 0 && hasCost ? (price - cost) / price : null, unitProfit: hasCost ? price - cost : null, soldQty: s.qty, soldRev: s.rev, coupons: cpn.get(d.id) || 0,
+      created: toMs(d.createdAt), updated: toMs(d.updatedAt) };
+  });
+  byId = new Map(P.map(p => [p.id, p]));
+  ui.sel = new Set([...ui.sel].filter(id => byId.has(id)));
+}
+const stockState = p => p.stock === null ? 'untracked' : p.stock <= 0 ? 'out' : (low() && p.stock <= low() ? 'low' : 'ok');
+
+/* ================= التصفية ================= */
+function view() {
+  const q = ui.q.trim().toLowerCase();
+  let l = P.filter(p => {
+    if (ui.status === 'low') { if (stockState(p) !== 'low') return false; }
+    else if (ui.status === 'out') { if (stockState(p) !== 'out') return false; }
+    else if (ui.status !== 'all' && p.status !== ui.status) return false;
+    if (ui.cat && p.category !== ui.cat) return false;
+    if (q && ![p.name, p.brand, p.category, p.sku, p.barcode, p.id].join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const by = {
+    new: (a, b) => b.created - a.created || a.name.localeCompare(b.name, 'ar'), name: (a, b) => a.name.localeCompare(b.name, 'ar'),
+    price_a: (a, b) => a.price - b.price, price_d: (a, b) => b.price - a.price, stock_a: (a, b) => (a.stock ?? 1e9) - (b.stock ?? 1e9), stock_d: (a, b) => (b.stock ?? -1) - (a.stock ?? -1),
+    sold: (a, b) => b.soldQty - a.soldQty, margin: (a, b) => (b.margin ?? -9) - (a.margin ?? -9), updated: (a, b) => b.updated - a.updated
+  }[ui.sort] || (() => 0);
+  return l.sort(by);
+}
+
+/* ================= العرض ================= */
+const thumb = (p, cls = '') => {
+  const im = p.images[0]; if (!im) return `<div class="thumb empty ${cls}">${svg('image')}<\/div>`;
+  return im.kind === 'doc' ? `<img data-img="${esc(im.id)}" alt="" class="${cls}">` : `<img src="${esc(safeUrl(im.url))}" alt="" loading="lazy" class="${cls}">`;
+};
+const stBadge = p => { const s = stockState(p); return s === 'untracked' ? '<span class="badge gray">غير متتبَّع<\/span>' : s === 'out' ? '<span class="badge red">نفد<\/span>' : s === 'low' ? `<span class="badge gold">${p.stock} · منخفض<\/span>` : `<span class="badge green">${p.stock}<\/span>`; };
+const mgCell = p => p.margin === null ? '<span class="muted">—<\/span>' : `<span class="mg ${p.margin < 0 ? 'neg' : p.margin < .15 ? '' : 'pos'}">${A.fmtPct(p.margin, 0)}<\/span>`;
+
+function render() {
+  if (!ui.loaded) { page.innerHTML = `<div class="kpis">${'<div class="skeleton"><\/div>'.repeat(4)}<\/div><div class="skeleton" style="min-height:300px"><\/div>`; return; }
+  const list = view(), cats = [...new Set(P.map(p => p.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
+  const pages = Math.max(1, Math.ceil(list.length / ui.per)); ui.page = Math.min(ui.page, pages);
+  const slice = list.slice((ui.page - 1) * ui.per, ui.page * ui.per);
+  const counts = { all: P.length, active: 0, draft: 0, archived: 0, low: 0, out: 0 };
+  let costVal = 0, retailVal = 0;
+  P.forEach(p => { counts[p.status]++; const s = stockState(p); if (s === 'low') counts.low++; if (s === 'out') counts.out++; if (p.stock > 0) { costVal += p.stock * p.cost; retailVal += p.stock * p.price; } });
+  const withoutCost = P.filter(p => !p.hasCost).length;
+  const allSel = slice.length > 0 && slice.every(p => ui.sel.has(p.id));
+  const errBar = Object.keys(store.errors).length ? `<div class="alert-box" style="margin-bottom:14px;padding:12px 14px;border-radius:12px;background:rgba(185,93,80,.12);color:var(--red);font-size:13px">تعذّر تحميل: ${Object.keys(store.errors).map(esc).join('، ')} — راجع قواعد Firestore.<\/div>` : '';
+
+  page.innerHTML = `
+    ${errBar}
+    <div class="kpis">
+      ${kpi('box', 'إجمالي المنتجات', A.fmtNum(P.length, 0), `${counts.active} منشور · ${counts.draft} مسودة`)}
+      ${kpi('coins', 'قيمة المخزون (تكلفة)', m(costVal), withoutCost ? `${withoutCost} منتج بلا تكلفة` : 'محسوبة من التكلفة × الكمية')}
+      ${kpi('trending', 'قيمة المخزون (بيع)', m(retailVal), `ربح متوقع ${m(retailVal - costVal)}`)}
+      ${kpi('alert', 'تنبيهات المخزون', `${counts.low + counts.out}`, `${counts.out} نفد · ${counts.low} منخفض`, counts.out ? 'neg' : '')}
+    <\/div>
+    <div class="pg-tools">
+      <div class="search">${svg('search')}<input id="q" type="search" placeholder="ابحث بالاسم أو SKU أو الباركود أو القسم..." value="${esc(ui.q)}" aria-label="بحث"><\/div>
+      <select id="fcat" aria-label="القسم"><option value="">كل الأقسام<\/option>${cats.map(c => `<option ${ui.cat === c ? 'selected' : ''}>${esc(c)}<\/option>`).join('')}<\/select>
+      <select id="fsort" aria-label="الترتيب">${[['new', 'الأحدث'], ['updated', 'آخر تعديل'], ['name', 'الاسم'], ['price_d', 'السعر: الأعلى'], ['price_a', 'السعر: الأقل'], ['stock_a', 'المخزون: الأقل'], ['stock_d', 'المخزون: الأعلى'], ['sold', 'الأكثر مبيعًا'], ['margin', 'الأعلى هامش ربح']].map(([k, l]) => `<option value="${k}" ${ui.sort === k ? 'selected' : ''}>${l}<\/option>`).join('')}<\/select>
+      <div class="seg" role="group" aria-label="طريقة العرض"><button type="button" data-act="view" data-id="table" class="${ui.view === 'table' ? 'on' : ''}">جدول<\/button><button type="button" data-act="view" data-id="grid" class="${ui.view === 'grid' ? 'on' : ''}">بطاقات<\/button><\/div>
+      <button class="btn btn-secondary" type="button" data-act="csv">${svg('download')} تصدير CSV<\/button>
+      <a class="btn btn-primary" href="add-product.html">${svg('plus')} منتج جديد<\/a>
+    <\/div>
+    <div class="chips" style="margin-bottom:14px">${[['all', 'الكل'], ['active', 'منشور'], ['draft', 'مسودة'], ['archived', 'مؤرشف'], ['low', 'مخزون منخفض'], ['out', 'نفد']].map(([k, l]) => `<button type="button" class="chip ${ui.status === k ? 'active' : ''}" data-act="status" data-id="${k}">${l} <span class="num">(${counts[k]})<\/span><\/button>`).join('')}<\/div>
+    <div class="bulk ${ui.sel.size ? 'show' : ''}" id="bulk"><b>${ui.sel.size} محدد<\/b>
+      <button class="btn btn-sm" type="button" data-act="bulk-status" data-id="active">نشر<\/button><button class="btn btn-sm" type="button" data-act="bulk-status" data-id="draft">مسودة<\/button><button class="btn btn-sm" type="button" data-act="bulk-status" data-id="archived">أرشفة<\/button>
+      <button class="btn btn-sm" type="button" data-act="bulk-price">تعديل الأسعار<\/button><button class="btn btn-sm" type="button" data-act="bulk-cat">تغيير القسم<\/button>
+      <button class="btn btn-sm d" type="button" data-act="bulk-del">حذف<\/button><button class="btn btn-sm" type="button" data-act="bulk-clear">إلغاء التحديد<\/button><\/div>
+    <div class="card" style="padding:${ui.view === 'grid' ? '16px' : '0'}">
+      ${!slice.length ? `<div class="empty-state">${svg('box')}<h3>${P.length ? 'لا توجد منتجات مطابقة' : 'لا توجد منتجات بعد'}<\/h3><p>${P.length ? 'غيّر البحث أو التصفية.' : 'ابدأ بإضافة أول منتج.'}<\/p>${P.length ? '' : '<br><a class="btn btn-primary" href="add-product.html">إضافة منتج<\/a>'}<\/div>`
+      : ui.view === 'grid' ? `<div class="pgrid">${slice.map(gridCard).join('')}<\/div>`
+      : `<div class="table-wrap"><table class="pt"><thead><tr><th class="ck"><input type="checkbox" id="selAll" ${allSel ? 'checked' : ''} aria-label="تحديد الكل"><\/th><th>المنتج<\/th><th class="hide-m">القسم<\/th><th class="n">السعر<\/th><th class="n hide-m">التكلفة<\/th><th class="n hide-m">الهامش<\/th><th class="n">المخزون<\/th><th class="n hide-m">مبيعات<\/th><th>الحالة<\/th><th><\/th><\/tr><\/thead><tbody>${slice.map(row).join('')}<\/tbody><\/table><\/div>`}
+    <\/div>
+    ${pages > 1 ? `<div class="pager"><button class="btn btn-secondary btn-sm" type="button" data-act="page" data-id="${ui.page - 1}" ${ui.page <= 1 ? 'disabled' : ''}>السابق<\/button><span class="muted num">${ui.page} / ${pages} · ${list.length} منتج<\/span><button class="btn btn-secondary btn-sm" type="button" data-act="page" data-id="${ui.page + 1}" ${ui.page >= pages ? 'disabled' : ''}>التالي<\/button><\/div>` : `<div class="muted" style="text-align:center;margin-top:12px;font-size:12.5px">${list.length} منتج<\/div>`}`;
+  hydrateImages(page);
+}
+const kpi = (icon, label, value, sub = '', cls = '') => `<div class="kpi"><div class="k-top"><div class="k-icon">${svg(icon)}<\/div><\/div><div class="k-label">${label}<\/div><div class="k-value num ${cls}">${value}<\/div>${sub ? `<div class="k-sub">${sub}<\/div>` : ''}<\/div>`;
+const sw = p => `<label class="switch" title="نشر / مسودة"><input type="checkbox" data-change="toggle" data-id="${esc(p.id)}" ${p.status === 'active' ? 'checked' : ''} ${p.status === 'archived' ? 'disabled' : ''} aria-label="نشر ${esc(p.name)}"><span><\/span><\/label>`;
+const actions = p => `<div class="act"><button class="btn btn-secondary btn-sm btn-icon" type="button" data-act="quick" data-id="${esc(p.id)}" title="تعديل سريع" aria-label="تعديل سريع">${svg('calc')}<\/button>
+  <a class="btn btn-secondary btn-sm btn-icon" href="add-product.html?id=${encodeURIComponent(p.id)}" title="تعديل كامل" aria-label="تعديل كامل">${svg('edit')}<\/a>
+  <a class="btn btn-secondary btn-sm btn-icon" href="WESHAH_marketplace_day_night.html#/product/${encodeURIComponent(p.id)}" target="_blank" rel="noopener" title="عرض في المتجر" aria-label="عرض في المتجر">${svg('eye')}<\/a>
+  <button class="btn btn-secondary btn-sm btn-icon" type="button" data-act="dup" data-id="${esc(p.id)}" title="نسخ المنتج" aria-label="نسخ">${svg('link')}<\/button>
+  <button class="btn btn-danger btn-sm btn-icon" type="button" data-act="del" data-id="${esc(p.id)}" title="حذف" aria-label="حذف">${svg('trash')}<\/button><\/div>`;
+const row = p => `<tr class="${ui.sel.has(p.id) ? 'sel' : ''}"><td class="ck"><input type="checkbox" data-change="sel" data-id="${esc(p.id)}" ${ui.sel.has(p.id) ? 'checked' : ''} aria-label="تحديد ${esc(p.name)}"><\/td>
+  <td><div class="nm">${thumb(p)}<div><a href="add-product.html?id=${encodeURIComponent(p.id)}">${esc(p.name)}<\/a><small>${esc([p.brand, p.sku && 'SKU ' + p.sku].filter(Boolean).join(' · ') || '—')}${p.featured ? ' · ⭐ مميّز' : ''}${p.coupons ? ` · ${p.coupons} كود خصم` : ''}${p.hasVariants ? ` · ${p.variants.length} متغيّر` : ''}<\/small><\/div><\/div><\/td>
+  <td class="hide-m">${esc(p.category || '—')}<\/td>
+  <td class="n num">${m(p.price)}${p.compare > p.price ? `<br><s class="muted" style="font-size:11px">${m(p.compare)}<\/s>` : ''}<\/td>
+  <td class="n num hide-m">${p.hasCost ? m(p.cost) : '<span class="muted">—<\/span>'}<\/td><td class="n hide-m">${mgCell(p)}<\/td>
+  <td class="n">${stBadge(p)}<\/td><td class="n num hide-m">${A.fmtNum(p.soldQty, 0)}<\/td>
+  <td>${sw(p)} <span class="badge ${STATUS[p.status][1]}" style="margin-right:6px">${STATUS[p.status][0]}<\/span><\/td><td>${actions(p)}<\/td><\/tr>`;
+const gridCard = p => `<article class="pcard ${ui.sel.has(p.id) ? 'sel' : ''}"><a class="im" href="add-product.html?id=${encodeURIComponent(p.id)}">${p.images[0] ? thumb(p) : `<div class="ph">${svg('image')}<\/div>`}<\/a>
+  <label class="ck"><input type="checkbox" data-change="sel" data-id="${esc(p.id)}" ${ui.sel.has(p.id) ? 'checked' : ''} aria-label="تحديد ${esc(p.name)}"><\/label><span class="st badge ${STATUS[p.status][1]}">${STATUS[p.status][0]}<\/span>
+  <div class="bd"><div class="muted" style="font-size:11.5px">${esc(p.category || '—')}<\/div><h3>${esc(p.name)}<\/h3><div class="pr"><b class="num">${m(p.price)}<\/b>${p.compare > p.price ? `<s class="num">${m(p.compare)}<\/s>` : ''}<\/div>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${stBadge(p)}${p.margin !== null ? `<span class="muted" style="font-size:11.5px">هامش ${mgCell(p)}<\/span>` : ''}<\/div><div class="acts">${actions(p)}<\/div><\/div><\/article>`;
+
+/* ================= كتابة ================= */
+const stamp = () => ({ updatedAt: serverTimestamp() });
+async function patch(id, data) {
+  await updateDoc(doc(db, 'products', id), { ...data, ...stamp() });
+  const rec = store.products.find(x => x.id === id); if (rec) Object.assign(rec, data);
+}
+async function patchMany(ids, data) {
+  for (let i = 0; i < ids.length; i += 400) {
+    const b = writeBatch(db); ids.slice(i, i + 400).forEach(id => b.update(doc(db, 'products', id), { ...data, ...stamp() })); await b.commit();
+  }
+  ids.forEach(id => { const rec = store.products.find(x => x.id === id); if (rec) Object.assign(rec, data); });
+}
+const imageIds = p => [...new Set([...(p.raw.images || []).filter(i => i && i.kind === 'doc').map(i => i.id), p.raw.imageId].filter(Boolean))];
+async function removeProducts(ids) {
+  let imgs = 0, cps = 0;
+  for (const id of ids) {
+    const p = byId.get(id); if (!p) continue;
+    // الصور تُحذف فقط إن لم يستخدمها منتج آخر
+    const others = new Set(P.filter(x => !ids.includes(x.id)).flatMap(imageIds));
+    for (const iid of imageIds(p)) { if (others.has(iid)) continue; try { await deleteImage(iid); imgs++; } catch (e) { console.warn('img', iid, e); } }
+    for (const c of store.coupons.filter(c => c.productId === id)) { try { await deleteDoc(doc(db, 'coupons', c.id)); cps++; } catch (e) { console.warn('cpn', e); } }
+    await deleteDoc(doc(db, 'products', id));
+    store.products = store.products.filter(x => x.id !== id); store.coupons = store.coupons.filter(c => c.productId !== id);
+  }
+  derive(); return { imgs, cps };
+}
+
+/* ================= الإجراءات ================= */
+const act = {
+  reload: async () => { toast('جارٍ التحديث...'); await load(); toast('✓ تم التحديث'); },
+  view: id => { ui.view = id; saveUi(); render(); },
+  status: id => { ui.status = id; ui.page = 1; saveUi(); render(); },
+  page: id => { ui.page = Number(id); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+  csv: () => {
+    const rows = [['المعرف', 'الاسم', 'الماركة', 'القسم', 'الحالة', 'السعر', 'السعر قبل الخصم', 'التكلفة', 'هامش الربح', 'المخزون', 'SKU', 'الباركود', 'المباع'],
+      ...view().map(p => [p.id, p.name, p.brand, p.category, STATUS[p.status][0], p.price, p.compare || '', p.hasCost ? p.cost : '', p.margin === null ? '' : Math.round(p.margin * 1000) / 10 + '%', p.stock ?? '', p.sku, p.barcode, p.soldQty])];
+    download(`weshah-products-${A.dayKey(new Date())}.csv`, A.toCSV(rows)); toast('✓ تم تصدير الملف');
+  },
+  quick: id => {
+    const p = byId.get(id); if (!p) return;
+    openModal({ title: `تعديل سريع: ${p.name}`, body: `
+      <div class="qe-row"><div class="field"><label>السعر (${esc(cur())})<\/label><input type="number" id="qPrice" min="0" step="0.01" inputmode="decimal" value="${p.price}"><\/div>
+      <div class="field"><label>السعر قبل الخصم<\/label><input type="number" id="qCmp" min="0" step="0.01" inputmode="decimal" value="${p.compare || ''}"><\/div><\/div>
+      <div class="qe-row"><div class="field"><label>التكلفة<\/label><input type="number" id="qCost" min="0" step="0.01" inputmode="decimal" value="${p.hasCost ? p.cost : ''}"><\/div>
+      <div class="field"><label>المخزون<\/label><input type="number" id="qStock" min="0" step="1" inputmode="numeric" value="${p.stock ?? ''}" ${p.hasVariants ? 'disabled' : ''}>${p.hasVariants ? '<small>المخزون محسوب من المتغيّرات — عدّله من «تعديل كامل».<\/small>' : '<small>اتركه فارغًا لعدم تتبّع المخزون.<\/small>'}<\/div><\/div>
+      <div class="field"><label>الحالة<\/label><select id="qStatus">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${p.status === k ? 'selected' : ''}>${v[0]}<\/option>`).join('')}<\/select><\/div>
+      <label class="check-row"><input type="checkbox" id="qFeat" ${p.featured ? 'checked' : ''}> منتج مميّز (يظهر في سلايدر المتجر)<\/label>`,
+      onSave: async box => {
+        const price = Number($('#qPrice', box).value), cmp = $('#qCmp', box).value, cost = $('#qCost', box).value, stock = $('#qStock', box).value;
+        if (!Number.isFinite(price) || price < 0) { toast('السعر غير صالح', 'error'); return false; }
+        if (cmp !== '' && Number(cmp) <= price && Number(cmp) !== 0) { toast('«السعر قبل الخصم» يجب أن يكون أعلى من السعر', 'error'); return false; }
+        const d = { price, comparePrice: cmp === '' ? 0 : Number(cmp), status: $('#qStatus', box).value, featured: $('#qFeat', box).checked };
+        if (cost !== '') d.cost = Math.max(0, Number(cost));
+        if (!p.hasVariants) d.stock = stock === '' ? null : Math.max(0, Math.round(Number(stock)));
+        await patch(id, d); derive(); toast('✓ تم الحفظ'); render();
+      } });
+  },
+  dup: async id => {
+    const p = byId.get(id); if (!p) return;
+    if (!await confirmDialog(`نسخ «${p.name}» كمسودة جديدة؟ سيتم نسخ الصور أيضًا.`, { okLabel: 'نسخ', danger: false })) return;
+    toast('جارٍ النسخ...');
+    const raw = JSON.parse(JSON.stringify(p.raw)); delete raw.id;
+    ['sku', 'barcode', 'qrValue', 'qrMode', 'barcodeMode'].forEach(k => delete raw[k]);
+    const map = new Map();
+    const copyImg = async iid => { if (map.has(iid)) return map.get(iid); const url = await getImageDataUrl(iid); const r = await saveImage(url, { kind: 'product', name: raw.name }); map.set(iid, r.id); return r.id; };
+    try {
+      if (Array.isArray(raw.images)) for (const im of raw.images) if (im && im.kind === 'doc') im.id = await copyImg(im.id);
+      if (raw.imageId) raw.imageId = await copyImg(raw.imageId);
+    } catch (e) { console.warn('dup images', e); toast('تعذّر نسخ بعض الصور — راجع المنتج الجديد', 'error'); }
+    raw.name = p.name + ' (نسخة)'; raw.status = 'draft'; raw.createdAt = serverTimestamp(); raw.updatedAt = serverTimestamp();
+    const ref = await addDoc(collection(db, 'products'), raw);
+    await load(); toast('✓ تم إنشاء النسخة كمسودة');
+    window.open(`add-product.html?id=${encodeURIComponent(ref.id)}`, '_self');
+  },
+  del: async id => {
+    const p = byId.get(id); if (!p) return;
+    const extra = [p.coupons ? `${p.coupons} كود خصم` : '', imageIds(p).length ? `${imageIds(p).length} صورة` : ''].filter(Boolean).join(' و');
+    if (!await confirmDialog(`حذف «${p.name}» نهائيًا؟${extra ? ` سيُحذف معه ${extra}.` : ''} الطلبات القديمة لن تتأثر.`, { okLabel: 'حذف نهائي' })) return;
+    await removeProducts([id]); toast('تم حذف المنتج'); render();
+  },
+  'bulk-clear': () => { ui.sel.clear(); render(); },
+  'bulk-status': async id => { const ids = [...ui.sel]; await patchMany(ids, { status: id }); derive(); toast(`✓ تم تحديث ${ids.length} منتج`); render(); },
+  'bulk-cat': () => {
+    const ids = [...ui.sel];
+    openModal({ title: `تغيير القسم (${ids.length})`, body: `<div class="field"><label>القسم الجديد<\/label><input id="bCat" list="catList" maxlength="60"><datalist id="catList">${[...new Set(P.map(p => p.category).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}<\/datalist><\/div>`,
+      onSave: async box => { const v = $('#bCat', box).value.trim(); if (!v) { toast('اكتب اسم القسم', 'error'); return false; } await patchMany(ids, { category: v }); derive(); toast('✓ تم التحديث'); render(); } });
+  },
+  'bulk-price': () => {
+    const ids = [...ui.sel];
+    openModal({ title: `تعديل أسعار ${ids.length} منتج`, body: `
+      <div class="field"><label>نوع التعديل<\/label><select id="bMode"><option value="pct">نسبة مئوية ٪<\/option><option value="amt">مبلغ ثابت<\/option><\/select><\/div>
+      <div class="field"><label>القيمة (موجب = زيادة، سالب = تخفيض)<\/label><input type="number" id="bVal" step="0.01" inputmode="decimal" placeholder="مثال: -10"><\/div>
+      <label class="check-row"><input type="checkbox" id="bCmp"> اعرض السعر القديم كـ«سعر قبل الخصم» (عند التخفيض)<\/label>
+      <div class="muted" id="bPrev" style="font-size:12.5px;margin-top:10px"><\/div>`,
+      onSave: async box => {
+        const mode = $('#bMode', box).value, v = Number($('#bVal', box).value), keep = $('#bCmp', box).checked;
+        if (!Number.isFinite(v) || v === 0) { toast('اكتب قيمة صحيحة', 'error'); return false; }
+        const calc = p => Math.max(0, Math.round((mode === 'pct' ? p.price * (1 + v / 100) : p.price + v) * 100) / 100);
+        for (let i = 0; i < ids.length; i += 400) {
+          const b = writeBatch(db);
+          ids.slice(i, i + 400).forEach(id => { const p = byId.get(id); const np = calc(p); const d = { price: np, ...stamp() }; if (keep && np < p.price) d.comparePrice = p.compare > p.price ? p.compare : p.price; else if (np >= p.compare) d.comparePrice = 0; b.update(doc(db, 'products', id), d); });
+          await b.commit();
+        }
+        ids.forEach(id => { const p = byId.get(id), np = calc(p), rec = store.products.find(x => x.id === id); if (rec) { if (keep && np < p.price) rec.comparePrice = p.compare > p.price ? p.compare : p.price; else if (np >= p.compare) rec.comparePrice = 0; rec.price = np; } });
+        derive(); toast('✓ تم تعديل الأسعار'); render();
+      } });
+    const prev = () => { const mode = $('#bMode').value, v = Number($('#bVal').value), p = byId.get(ids[0]); if (!p || !Number.isFinite(v) || !v) { $('#bPrev').textContent = ''; return; } const np = Math.max(0, mode === 'pct' ? p.price * (1 + v / 100) : p.price + v); $('#bPrev').textContent = `مثال: «${p.name}» ${m(p.price)} ← ${m(np)}`; };
+    $('#bMode').addEventListener('change', prev); $('#bVal').addEventListener('input', prev);
+  },
+  'bulk-del': async () => {
+    const ids = [...ui.sel];
+    if (!await confirmDialog(`حذف ${ids.length} منتج نهائيًا مع صورها وأكواد خصمها؟ لا يمكن التراجع.`, { okLabel: `حذف ${ids.length}` })) return;
+    toast('جارٍ الحذف...'); const r = await removeProducts(ids); ui.sel.clear(); toast(`تم حذف ${ids.length} منتج (${r.imgs} صورة، ${r.cps} كود)`); render();
+  }
+};
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const fn = act[el.dataset.act]; if (!fn) return;
+  if (el.tagName === 'A') return;
+  el.disabled !== undefined && (el.dataset.busy = '1');
+  try { await fn(el.dataset.id); } catch (err) { console.error(err); toast(err.message || 'حدث خطأ', 'error'); }
+});
+document.addEventListener('change', async e => {
+  const t = e.target;
+  if (t.id === 'fcat') { ui.cat = t.value; ui.page = 1; saveUi(); return render(); }
+  if (t.id === 'fsort') { ui.sort = t.value; saveUi(); return render(); }
+  if (t.id === 'selAll') { const l = view().slice((ui.page - 1) * ui.per, ui.page * ui.per); l.forEach(p => t.checked ? ui.sel.add(p.id) : ui.sel.delete(p.id)); return render(); }
+  const c = t.closest('[data-change]'); if (!c) return;
+  if (c.dataset.change === 'sel') { c.checked ? ui.sel.add(c.dataset.id) : ui.sel.delete(c.dataset.id); $('#bulk')?.classList.toggle('show', ui.sel.size > 0); return render(); }
+  if (c.dataset.change === 'toggle') {
+    const id = c.dataset.id, status = c.checked ? 'active' : 'draft';
+    try { await patch(id, { status }); derive(); toast(status === 'active' ? '✓ تم نشر المنتج' : 'تحويل إلى مسودة'); render(); }
+    catch (err) { console.error(err); toast('تعذّر التحديث', 'error'); render(); }
+  }
+});
+document.addEventListener('input', debounce(e => { if (e.target.id === 'q') { ui.q = e.target.value; ui.page = 1; const pos = e.target.selectionStart; render(); const q = $('#q'); q.focus(); try { q.setSelectionRange(pos, pos); } catch (_) {} } }, 220));
+document.addEventListener('weshah:config-ready', () => ui.loaded && render());
+document.addEventListener('weshah:config', () => ui.loaded && render());
+render(); load();
+</script>
+</body>
+</html>

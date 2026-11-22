@@ -1,0 +1,27 @@
+{
+  "id": "./index.html",
+  "name": "WESHAH — لوحة التحكم",
+  "short_name": "WESHAH",
+  "description": "لوحة إدارة متجر WESHAH: المنتجات والطلبات والمحاسبة",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f7ebd5",
+  "theme_color": "#073b29",
+  "categories": ["business", "productivity", "finance"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "الطلبات", "url": "./orders.html", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "المصروفات", "url": "./index.html#expenses", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "قائمة الدخل", "url": "./index.html#pnl", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+  ]
+}
