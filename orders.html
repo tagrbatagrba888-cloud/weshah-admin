@@ -421,7 +421,7 @@ function invoiceHTML(orders, { size = 'a4', logo }) {
   const one = o => {
     const s = stationOf(o), code = invCode(o);
     const stamp = o.status === 'cancelled' ? 'ملغي' : o.status === 'refunded' ? 'مرتجع' : '';
-    const paid = o.status === 'completed';
+    // Delivery status is not proof of payment. Preserve the recorded total.
     return `<section class="inv ${size}">
       ${stamp ? `<div class="stamp">${stamp}<\/div>` : ''}
       <header><div class="brand"><img src="${esc(logo)}" alt=""><div><div class="bn">${esc(name)}<\/div>${nameAr ? `<div class="bs">${esc(nameAr)}<\/div>` : ''}${sf.phone ? `<div class="bs" dir="ltr">+${esc(String(sf.phone).replace(/\D/g, ''))}<\/div>` : ''}<\/div><\/div>
@@ -430,10 +430,10 @@ function invoiceHTML(orders, { size = 'a4', logo }) {
       <div class="two"><div class="bx"><h5>فاتورة إلى<\/h5><b>${esc(o.customer)}<\/b><div dir="ltr" class="ph">${esc(o.phone)}<\/div><\/div><div class="bx"><h5>عنوان التسليم<\/h5><div>${esc([o.city, o.address].filter(Boolean).join(' — ') || '—')}<\/div>${o.notes ? `<div class="nt">ملاحظات: ${esc(o.notes)}<\/div>` : ''}<\/div><\/div>
       <table><thead><tr><th style="width:34px">#<\/th><th>الصنف<\/th><th class="c">الكمية<\/th><th class="e">السعر<\/th><th class="e">الإجمالي<\/th><\/tr><\/thead><tbody>
         ${o.items.map((i, k) => `<tr><td>${k + 1}<\/td><td><b>${esc(i.name)}<\/b>${i.color || i.size ? `<div class="op">${esc([i.color, i.size].filter(Boolean).join(' · '))}<\/div>` : ''}<\/td><td class="c">${i.qty}<\/td><td class="e">${mny(i.price)}<\/td><td class="e">${mny(i.qty * i.price)}<\/td><\/tr>`).join('')}<\/tbody><\/table>
-      <div class="bottom"><div class="codes"><div class="qr">${qrSvg(code, { ecl: 'M', scale: 4, margin: 2 })}<\/div><div class="bc">${barcodeSvg(code, 'code128', { module: 2, height: 54, quiet: 6, showText: true })}<div class="sc">امسح الرمز لمتابعة الفاتورة<\/div><\/div><\/div>
+      <div class="bottom"><div class="codes"><div class="qr">${qrSvg(code, { ecl: 'M', scale: 4, margin: 2 })}<\/div><div class="bc">${barcodeSvg(code, 'code128', { module: 2, height: 54, quiet: 6, showText: true })}<div class="sc">رمز مرجعي لرقم الطلب<\/div><\/div><\/div>
         <div class="sum"><div><span>المجموع الفرعي<\/span><b>${mny(o.subtotal)}<\/b><\/div>${o.discount ? `<div class="ds"><span>الخصم ${o.coupon ? `(${esc(o.coupon)})` : ''}<\/span><b>− ${mny(o.discount)}<\/b><\/div>` : ''}<div><span>الشحن<\/span><b>${o.shipping ? mny(o.shipping) : 'مجاني'}<\/b><\/div>
-        <div class="gt"><span>${paid ? 'الإجمالي المدفوع' : o.payment === 'cod' && !stamp ? 'المطلوب عند الاستلام' : 'الإجمالي'}<\/span><b>${mny(o.total)}<\/b><\/div><\/div><\/div>
-      <footer><div>شكرًا لثقتكم في <b>${esc(nameAr || name)}<\/b> 💚<\/div><div class="sm">الاستبدال والاسترجاع حسب سياسة المتجر · هذه الفاتورة صادرة إلكترونيًا<\/div><\/footer><\/section>`;
+        <div class="gt"><span>${o.payment === 'cod' && !stamp && o.status !== 'completed' ? 'المطلوب عند الاستلام' : 'الإجمالي المسجل'}<\/span><b>${mny(o.total)}<\/b><\/div><\/div><\/div>
+      <footer><div>شكرًا لثقتكم في <b>${esc(nameAr || name)}<\/b> 💚<\/div><div class="sm">الاستبدال والاسترجاع حسب سياسة المتجر · بيان بيانات الطلب، ليس إثبات سداد أو فاتورة ضريبية<\/div><\/footer><\/section>`;
   };
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>فاتورة ${esc(orders.length === 1 ? orders[0].number : orders.length + ' طلب')}<\/title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700;800&family=DM+Sans:wght@500;700;800&display=swap">
@@ -469,6 +469,7 @@ footer{position:absolute;bottom:6mm;right:0;left:0;text-align:center;font-size:1
 .receipt table{width:calc(100% - 8mm);margin:3mm 4mm 0}.receipt td,.receipt th{padding:5px 4px;font-size:10.5px}.receipt th:first-child,.receipt td:first-child{display:none}
 .receipt .bottom{flex-direction:column;align-items:stretch;padding:3mm 4mm 0}.receipt .codes{flex-direction:column}.receipt .bc svg{width:100%}.receipt .sum{min-width:0}
 .receipt .stamp{font-size:44px}
+.receipt footer{position:static;margin-top:5mm;padding:0 4mm}.inv.receipt{padding-bottom:5mm}
 @media print{body{background:#fff}.inv{margin:0;box-shadow:none;width:auto;min-height:auto;height:${size === 'receipt' ? 'auto' : '275mm'}}.inv.receipt{width:auto}}
 <\/style><\/head><body>${orders.map(one).join('')}<\/body><\/html>`;
 }
@@ -658,4 +659,4 @@ document.addEventListener('weshah:config', () => ui.loaded && render());
 render(); load();
 </script>
 </body>
-</html>
+  </html>
