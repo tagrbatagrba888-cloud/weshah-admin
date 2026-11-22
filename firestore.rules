@@ -1,14 +1,45 @@
 rules_version = '2';
 service cloud.firestore {
-  match /databases/{database}/documents {
-    function notificationCollection(name) {
-      return name in ['weshahPushSubscriptions', 'weshahPushLimits', 'weshahPushCampaigns'];
-    }
-    function notificationServer() {
-      return request.auth != null && request.auth.uid == '8wGuAyip2ROrhSklnmz6YYlF1Xx2';
-    }
-    match /{topLevel}/{document=**} {
-      allow read, write: if !notificationCollection(topLevel) || notificationServer();
-    }
+ match /databases/{database}/documents {
+  function reserved(name) {return name in ['weshahPushSubscriptions','weshahPushLimits','weshahPushCampaigns'];}
+  function privateCollection(name) {return name in ['customers','orders'];}
+  function trustedServer() {return request.auth != null && request.auth.uid == '8wGuAyip2ROrhSklnmz6YYlF1Xx2';}
+  function own(uid) {return request.auth != null && request.auth.uid == uid;}
+  function text(value,max) {return value is string && value.size() <= max;}
+  function accountEmail(data) {return data.email is string && request.auth.token.email is string && data.email.lower() == request.auth.token.email.lower();}
+  function profileFields(data) {
+   return data.uid == request.auth.uid && accountEmail(data)
+    && text(data.get('name',''),160) && data.get('name','').size() >= 2
+    && data.get('phone','') is string && data.get('phone','').matches('^[0-9]{10,15}$')
+    && text(data.get('city',''),200) && text(data.get('address',''),2000)
+    && data.get('ordersCount',0) is int && data.get('ordersCount',0) >= 0 && data.get('ordersCount',0) <= 1000000;
   }
+  match /{topLevel}/{document=**} {
+   allow read,write: if (!reserved(topLevel) && !privateCollection(topLevel)) || trustedServer();
+  }
+  match /customers/{uid} {
+   allow read: if own(uid);
+   allow create: if own(uid) && profileFields(request.resource.data)
+    && request.resource.data.keys().hasOnly(['uid','email','name','phone','city','address','createdAt','ordersCount','lastOrderAt'])
+    && request.resource.data.get('ordersCount',0) == 0
+    && request.resource.data.get('createdAt',request.time) == request.time;
+   allow update: if own(uid) && profileFields(request.resource.data)
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name','phone','city','address','email','ordersCount','lastOrderAt']);
+  }
+  match /orders/{orderId} {
+   allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+   allow create: if request.auth != null && request.resource.data.uid == request.auth.uid && accountEmail(request.resource.data)
+    && request.resource.data.keys().hasOnly(['orderNumber','uid','email','customerName','phone','address','city','notes','items','subtotal','discount','couponCode','shipping','total','paymentMethod','status','source','createdAt'])
+    && request.resource.data.status == 'pending' && request.resource.data.paymentMethod == 'cod' && request.resource.data.source == 'web'
+    && request.resource.data.createdAt == request.time
+    && text(request.resource.data.orderNumber,50) && text(request.resource.data.customerName,160) && request.resource.data.customerName.size() >= 2
+    && request.resource.data.phone is string && request.resource.data.phone.matches('^[0-9]{10,15}$')
+    && text(request.resource.data.city,200) && text(request.resource.data.address,2000) && text(request.resource.data.get('notes',''),2000)
+    && request.resource.data.items is list && request.resource.data.items.size() > 0 && request.resource.data.items.size() <= 50
+    && request.resource.data.subtotal is number && request.resource.data.subtotal >= 0 && request.resource.data.subtotal <= 10000000
+    && request.resource.data.discount is number && request.resource.data.discount >= 0 && request.resource.data.discount <= 10000000
+    && request.resource.data.shipping is number && request.resource.data.shipping >= 0 && request.resource.data.shipping <= 10000000
+    && request.resource.data.total is number && request.resource.data.total >= 0 && request.resource.data.total <= 10000000;
+  }
+ }
 }
