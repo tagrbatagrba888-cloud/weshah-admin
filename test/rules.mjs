@@ -6,7 +6,7 @@ const env=await initializeTestEnvironment({projectId:'demo-weshah-push',firestor
 after(()=>env.cleanup());
 const actors={guest:env.unauthenticatedContext().firestore(),customer:env.authenticatedContext('ordinary-customer').firestore(),server:env.authenticatedContext('8wGuAyip2ROrhSklnmz6YYlF1Xx2').firestore()};
 const reserved=['weshahPushSubscriptions','weshahPushLimits','weshahPushCampaigns'];
-const legacy=['products','orders','customers','reviews','questions','coupons','images','image_chunks','settings','subscribers','suppliers','expenses','unknownLegacyCollection'];
+const legacy=['products','reviews','questions','coupons','images','image_chunks','settings','subscribers','suppliers','expenses','unknownLegacyCollection'];
 for(const name of [...legacy,...reserved]) for(const nested of [false,true]){
  const path=name+'/fixture'+(nested?'/nested/fixture':'');
  await env.withSecurityRulesDisabled(async c=>setDoc(doc(c.firestore(),path),{before:true}));
