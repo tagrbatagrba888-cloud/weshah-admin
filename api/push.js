@@ -1,6 +1,6 @@
 import {randomBytes} from 'node:crypto';
 import webpush from 'web-push';
-import {ADMIN,STORE,HttpError,fail,passwordMatches,cookie,session,sign,verify,subscription,message,payload,sha} from '../server/security.mjs';
+import {ADMIN,STORE,HttpError,fail,passwordMatches,cookie,session,sign,verify,subscription,message,payload,sha,testUid,sendingEnabled} from '../server/security.mjs';
 import * as storage from '../server/storage.mjs';
 export function makeHandler(deps=storage,push=webpush){return async(req,res)=>{
  res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Vary','Origin');
@@ -11,7 +11,7 @@ export function makeHandler(deps=storage,push=webpush){return async(req,res)=>{
   if(req.method==='OPTIONS'){res.statusCode=204;return res.end();}
   const action=req.query?.action||new URL(req.url,'https://local.invalid').searchParams.get('action');
   if(req.method==='GET'&&action==='config')return res.status(200).json({publicKey:process.env.PUSH_VAPID_PUBLIC||'',enabled:!!process.env.PUSH_SERVER_UID});
-  if(req.method==='GET'&&action==='session')return res.status(200).json({authenticated:!!session(req.headers.cookie),sendingEnabled:process.env.PUSH_SEND_ENABLED==='true'});
+  if(req.method==='GET'&&action==='session')return res.status(200).json({authenticated:!!session(req.headers.cookie),sendingEnabled:sendingEnabled(),testOnly:true});
   if(req.method!=='POST')fail(405,'Method not allowed');
   if(!req.headers['content-type']?.startsWith('application/json'))fail(415,'JSON required');
   let body=req.body;if(typeof body==='string'){if(body.length>12000)fail(413,'Request too large');try{body=JSON.parse(body)}catch{fail(400,'Invalid JSON')}}
@@ -37,11 +37,12 @@ export function makeHandler(deps=storage,push=webpush){return async(req,res)=>{
   const auth=session(req.headers.cookie);if(!auth)fail(401,'Sign out and back in using the existing administration login');
   if(!['preview','send'].includes(action))fail(404,'Unknown action');
   const m=message(body),rows=await deps.recipients(m),audience=sha(rows.map(r=>r.id).join('|'));
+  if(testUid()&&rows.some(row=>row.uid!==testUid()))fail(503,'Test audience is not isolated');
   if(action==='preview'){
    const id=randomBytes(16).toString('hex');
-   return res.status(200).json({count:rows.length,previewToken:sign({kind:'preview',jti:auth.jti,id,digest:sha(JSON.stringify(m)),audience,exp:Date.now()+120000}),message:m,sendingEnabled:process.env.PUSH_SEND_ENABLED==='true'});
+   return res.status(200).json({count:rows.length,previewToken:sign({kind:'preview',jti:auth.jti,id,digest:sha(JSON.stringify(m)),audience,exp:Date.now()+120000}),message:m,sendingEnabled:sendingEnabled(),testOnly:true});
   }
-  if(process.env.PUSH_SEND_ENABLED!=='true')fail(503,'Sending is not enabled');
+  if(!sendingEnabled())fail(503,'Sending is disabled or the isolated test account is not configured');
   if(!process.env.PUSH_VAPID_PUBLIC||!process.env.PUSH_VAPID_PRIVATE)fail(503,'Push signing is not configured');
   const proof=verify(body.previewToken);
   if(proof?.kind!=='preview'||proof.jti!==auth.jti||proof.digest!==sha(JSON.stringify(m))||proof.audience!==audience)fail(409,'Preview expired or recipients changed. Preview again');

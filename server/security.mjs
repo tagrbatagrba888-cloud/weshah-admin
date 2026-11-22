@@ -46,4 +46,6 @@ export function message(value){
  if(orderId&&!/^[A-Za-z0-9_-]+$/.test(orderId))fail(400,'Invalid order ID');
  return {type,title,body,orderId};
 }
+export function testUid(env=process.env){return /^[A-Za-z0-9_-]{20,128}$/.test(env.PUSH_TEST_UID||'')?env.PUSH_TEST_UID:null;}
+export function sendingEnabled(env=process.env){return env.PUSH_SEND_ENABLED==='true'&&!!testUid(env);}
 export function payload(m,id){return JSON.stringify({title:m.title,body:m.body,tag:'weshah-'+id,url:STORE+(m.type==='product'?'/':'/?orders=1'),icon:STORE+'/1-icon-192.png'});}
