@@ -7,9 +7,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, writeBatch,
+  collection, doc, setDoc, addDoc,
   query, orderBy, where, onSnapshot, serverTimestamp, Timestamp, runTransaction, increment
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {getDoc,getDocs,updateDoc,deleteDoc,writeBatch} from './private-data.js';
 import {
   $, $$, esc, svg, safeHref, COLORS, LOGO_FALLBACK, toast,
   initTheme, toggleTheme, registerSW, isStandalone, installApp, canInstall,
