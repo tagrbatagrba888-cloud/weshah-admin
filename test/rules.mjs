@@ -5,8 +5,8 @@ import {test,after} from 'node:test';
 const env=await initializeTestEnvironment({projectId:'demo-weshah-push',firestore:{host:'127.0.0.1',port:8089,rules:await readFile('firestore.rules','utf8')}});
 after(()=>env.cleanup());
 const actors={guest:env.unauthenticatedContext().firestore(),customer:env.authenticatedContext('ordinary-customer').firestore(),server:env.authenticatedContext('8wGuAyip2ROrhSklnmz6YYlF1Xx2').firestore()};
-const reserved=['weshahPushSubscriptions','weshahPushLimits','weshahPushCampaigns'];
-const legacy=['products','reviews','questions','coupons','images','image_chunks','settings','subscribers','suppliers','expenses','unknownLegacyCollection'];
+const reserved=['weshahPushSubscriptions','weshahPushLimits','weshahPushCampaigns','subscribers'];
+const legacy=['products','reviews','questions','coupons','images','image_chunks','settings','suppliers','expenses','unknownLegacyCollection'];
 for(const name of [...legacy,...reserved]) for(const nested of [false,true]){
  const path=name+'/fixture'+(nested?'/nested/fixture':'');
  await env.withSecurityRulesDisabled(async c=>setDoc(doc(c.firestore(),path),{before:true}));
