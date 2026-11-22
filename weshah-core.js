@@ -173,17 +173,18 @@ export async function imageStats() {
 export const DEFAULT_NAV = [
   { id: 'nav_dashboard', name: 'لوحة التحكم', href: 'index.html', icon: 'dashboard', builtin: true, locked: true },
   { id: 'nav_products', name: 'المنتجات', href: 'products.html', icon: 'box', builtin: true },
+  { id: 'nav_notifications', name: 'الإشعارات', href: 'notifications.html', icon: 'alert', builtin: true },
   { id: 'nav_orders', name: 'الطلبات', href: 'orders.html', icon: 'cart', builtin: true },
   { id: 'nav_suppliers', name: 'الموردين', href: 'suppliers.html', icon: 'truck', builtin: true },
   { id: 'nav_customers', name: 'العملاء', href: 'customers.html', icon: 'users', builtin: true },
-  { id: 'nav_store', name: 'عرض المتجر', href: 'WESHAH_marketplace_day_night.html', icon: 'store', builtin: true, sep: true },
+  { id: 'nav_store', name: 'عرض المتجر', href: 'https://weshah-store.vercel.app/', icon: 'store', builtin: true, sep: true },
   { id: 'nav_settings', name: 'الإعدادات', href: 'settings.html', icon: 'settings', builtin: true, locked: true }
 ];
 export const DEFAULT_ACTIONS = [
   { id: 'act_add_product', name: 'إضافة منتج', desc: 'أضف منتجًا جديدًا للمتجر', href: 'add-product.html', icon: 'plus', color: 'green', builtin: true },
   { id: 'act_orders', name: 'الطلبات', desc: 'راجع الطلبات', href: 'orders.html', icon: 'cart', color: 'gold', builtin: true },
   { id: 'act_suppliers', name: 'الموردين', desc: 'أدر الموردين والشراكات', href: 'suppliers.html', icon: 'truck', color: 'forest', builtin: true },
-  { id: 'act_store', name: 'عرض المتجر', desc: 'شاهد المتجر كما يراه العملاء', href: 'WESHAH_marketplace_day_night.html', icon: 'store', color: 'dark', builtin: true },
+  { id: 'act_store', name: 'عرض المتجر', desc: 'شاهد المتجر كما يراه العملاء', href: 'https://weshah-store.vercel.app/', icon: 'store', color: 'dark', builtin: true },
   { id: 'act_expense', name: 'تسجيل مصروف', desc: 'سجّل إيجار أو إعلانات أو أي مصروف', href: 'index.html#expenses', icon: 'receipt', color: 'red', builtin: true },
   { id: 'act_coupons', name: 'أكواد الخصم', desc: 'أنشئ وتابع أكواد الخصم', href: 'index.html#coupons', icon: 'percent', color: 'purple', builtin: true },
   { id: 'act_pnl', name: 'قائمة الدخل', desc: 'الأرباح والخسائر بالتفصيل', href: 'index.html#pnl', icon: 'chart', color: 'blue', builtin: true }
@@ -230,6 +231,7 @@ function mergeList(stored, defaults) {
   defaults.forEach(d => { if (!ids.has(d.id)) out.push({ ...d }); });
   // الإعدادات ولوحة التحكم لا تُخفى ولا تُحذف أبدًا حتى لا يضيع الوصول للوحة
   out.forEach(x => { const d = defaults.find(y => y.id === x.id); if (d && d.locked) { x.locked = true; x.visible = true; x.deleted = false; } });
+  out.forEach(x=>{if(['nav_store','act_store'].includes(x.id))x.href='https://weshah-store.vercel.app/';});
   return out;
 }
 

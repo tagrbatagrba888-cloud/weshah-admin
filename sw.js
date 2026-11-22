@@ -1,5 +1,5 @@
 /* WESHAH service worker — يجعل لوحة التحكم تعمل كتطبيق ويمكن فتحها حتى مع ضعف الاتصال */
-const VERSION = 'weshah-v4';
+const VERSION = 'weshah-v5';
 const SHELL = [
   './', 'index.html', 'login.html', 'settings.html', 'products.html', 'orders.html', 'WESHAH_marketplace_day_night.html',
   'weshah.css', 'weshah-lite.js', 'weshah-core.js', 'weshah-accounting.js',
@@ -26,6 +26,8 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  // Private session/config routes are network-only and never enter app caches.
+  if(url.origin===self.location.origin&&url.pathname.startsWith('/api/'))return;
 
   // Firestore / auth / identity APIs: never intercept (Firestore has its own offline cache)
   if (/(firestore|identitytoolkit|securetoken|firebaseinstallations)\.googleapis\.com$/.test(url.hostname)) return;

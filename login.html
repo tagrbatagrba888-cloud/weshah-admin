@@ -88,7 +88,7 @@ body[data-theme="dark"] .login-foot{background:#0a1f17}
     <span class="brand"><span class="js-name">WESHAH</span><small>DISCOVER MORE</small></span>
   </a>
   <div class="top-actions">
-    <a class="top-btn" href="WESHAH_marketplace_day_night.html" aria-label="عودة للموقع"><span id="homeIcon"></span><span class="txt">عودة للموقع</span></a>
+    <a class="top-btn" href="https://weshah-store.vercel.app/" aria-label="عودة للموقع"><span id="homeIcon"></span><span class="txt">عودة للموقع</span></a>
     <button class="top-icon" type="button" onclick="toggleTheme()" aria-label="تبديل الوضع الليلي والنهاري"><svg class="ic js-theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></svg></button>
   </div>
 </div>
@@ -147,17 +147,17 @@ body[data-theme="dark"] .login-foot{background:#0a1f17}
   </div>
 </div>
 
-<div class="login-foot">© 2026 <a href="WESHAH_marketplace_day_night.html">WESHAH</a> — جميع الحقوق محفوظة · لوحة التحكم الإدارية</div>
+<div class="login-foot">© 2026 <a href="https://weshah-store.vercel.app/">WESHAH</a> — جميع الحقوق محفوظة · لوحة التحكم الإدارية</div>
 
 <script type="module">
-import { $, svg, initTheme, getSession, setSession, sha256Hex, registerSW, paintBrandFromCache, installApp, canInstall, isStandalone, isIOS } from './weshah-lite.js';
+import { $, svg, initTheme, getSession, setSession, clearSession, registerSW, paintBrandFromCache, installApp, canInstall, isStandalone, isIOS } from './weshah-lite.js';
 
 initTheme();
 registerSW();
 paintBrandFromCache();
 
 // لو الجلسة سارية ندخل مباشرة
-if (getSession()) location.replace('index.html');
+if (getSession()) { try { const check=await fetch('/api/push?action=session',{cache:'no-store'});if(check.ok&&(await check.json()).authenticated)location.replace('index.html');else clearSession();}catch{clearSession();} }
 
 /* أيقونات */
 $('#homeIcon').innerHTML = svg('home');
@@ -182,16 +182,7 @@ $('#togglePass').addEventListener('click', () => {
 });
 $('#forgot').addEventListener('click', () => alert('للاستفسار عن بيانات الدخول، يرجى التواصل مع مدير النظام.'));
 
-/* ===== منطق الدخول =====
-   لا نخزّن كلمة المرور نصًا داخل الصفحة؛ نقارن بصمة SHA-256 فقط. */
-const CRED_HASH = '86642f43971d14fd06d23446d73032062db573e9995913ecc87e41a0f7b55823';
-const SALT = 'weshah::v1::';
-const LOCK_KEY = 'weshah_login_guard';
-const MAX_TRIES = 5, LOCK_MS = 5 * 60 * 1000;
-
-const guard = () => { try { return JSON.parse(localStorage.getItem(LOCK_KEY) || '{}'); } catch (_) { return {}; } };
-const saveGuard = g => { try { localStorage.setItem(LOCK_KEY, JSON.stringify(g)); } catch (_) {} };
-
+/* Server checks the existing credentials; no public client-side verifier. */
 const form = $('#loginForm'), u = $('#username'), p = $('#password'), btn = $('#loginBtn');
 const errBox = $('#errorAlert'), okBox = $('#successAlert');
 const btnHTML = btn.innerHTML;
@@ -207,30 +198,16 @@ form.addEventListener('submit', async e => {
   const user = u.value.trim(), pass = p.value;
   if (!user || !pass) return showError('يرجى إدخال اسم المستخدم وكلمة المرور');
 
-  const g = guard();
-  if (g.until && g.until > Date.now()) {
-    const mins = Math.ceil((g.until - Date.now()) / 60000);
-    return showError(`تم إيقاف المحاولات مؤقتًا. حاول بعد ${mins} دقيقة.`);
-  }
-
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span><span>جارٍ التحقق...</span>';
-  const hash = await sha256Hex(SALT + user + ':' + pass);
-  await new Promise(r => setTimeout(r, 450));
+  try {
+    const r=await fetch('/api/push?action=login',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:user,password:pass,remember:$('#remember').checked})});
+    if(!r.ok){showError(r.status===401?'اسم المستخدم أو كلمة المرور غير صحيحة.':r.status===429?'محاولات كثيرة. انتظر قليلًا ثم حاول مجددًا.':'خدمة تسجيل الدخول غير متاحة حاليًا. حاول لاحقًا.');return;}
+    okBox.classList.add('show');setSession(user,$('#remember').checked);p.value='';
+    btn.innerHTML='<span>تم التحقق ✓</span>';location.href='index.html';
+  } catch { showError('تعذّر الاتصال بخادم تسجيل الدخول. تأكد من اتصالك ثم حاول مجددًا.'); }
+  finally { btn.disabled=false;btn.innerHTML=btnHTML; }
 
-  if (hash === CRED_HASH) {
-    saveGuard({});
-    okBox.classList.add('show');
-    setSession(user, $('#remember').checked);
-    btn.innerHTML = '<span>تم التحقق ✓</span>';
-    setTimeout(() => { location.href = 'index.html'; }, 700);
-  } else {
-    const n = (g.n || 0) + 1;
-    if (n >= MAX_TRIES) { saveGuard({ n: 0, until: Date.now() + LOCK_MS }); showError('تجاوزت عدد المحاولات المسموحة. تم إيقاف الدخول 5 دقائق.'); }
-    else { saveGuard({ n }); showError(`اسم المستخدم أو كلمة المرور غير صحيحة. (متبقي ${MAX_TRIES - n} محاولات)`); }
-    btn.disabled = false; btn.innerHTML = btnHTML;
-    p.value = ''; p.focus();
-  }
 });
 </script>
 </body>
